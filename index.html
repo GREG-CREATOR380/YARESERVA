@@ -192,6 +192,7 @@
     .table-header, .table-row { grid-template-columns:1fr 1fr; }
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -694,30 +695,69 @@ function switchTab(tab) {
   document.getElementById('tab-register').classList.toggle('active', tab === 'register');
 }
 
-function doLogin() {
+async function doLogin() {
   const email = document.getElementById('login-email').value;
   const pass = document.getElementById('login-pass').value;
   if (!email || !pass) { alert('Por favor complete todos los campos.'); return; }
-  // Demo login
-  currentUser = { name: 'Salón Diana', email };
-  document.getElementById('salon-name-display').textContent = 'Salón Diana';
-  document.getElementById('booking-url').textContent = 'yareserva.app/salon-diana';
-  showView('view-dashboard');
-  initDashboard();
+  
+  try {
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { data, error } = await client.auth.signInWithPassword({ email, password: pass });
+    
+    if (error) { alert('Error: ' + error.message); return; }
+    
+    // Get salon info
+    const { data: salon } = await client.from('salons').select('*').eq('email', email).single();
+    
+    currentUser = { name: salon?.nom || 'Mi Salón', email, salon_id: salon?.id };
+    document.getElementById('salon-name-display').textContent = currentUser.name;
+    document.getElementById('booking-url').textContent = `yareserva.app/${salon?.slug || 'mi-salon'}`;
+    showView('view-dashboard');
+    initDashboard();
+    loadReservations();
+  } catch(e) {
+    // Demo fallback
+    currentUser = { name: 'Salón Demo', email };
+    document.getElementById('salon-name-display').textContent = 'Salón Demo';
+    showView('view-dashboard');
+    initDashboard();
+  }
 }
 
-function doRegister() {
+async function doRegister() {
   const name = document.getElementById('reg-name').value;
   const email = document.getElementById('reg-email').value;
   const phone = document.getElementById('reg-phone').value;
+  const sector = document.getElementById('reg-sector').value;
   const pass = document.getElementById('reg-pass').value;
   if (!name || !email || !phone || !pass) { alert('Por favor complete todos los campos obligatorios.'); return; }
-  currentUser = { name, email, phone };
-  document.getElementById('salon-name-display').textContent = name;
+  
   const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  document.getElementById('booking-url').textContent = `yareserva.app/${slug}`;
-  showView('view-dashboard');
-  initDashboard();
+  
+  try {
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // Create auth user
+    const { data: authData, error: authError } = await client.auth.signUp({ email, password: pass });
+    if (authError) { alert('Error: ' + authError.message); return; }
+    
+    // Create salon record
+    await client.from('salons').insert([{ nom: name, email, whatsapp: phone, secteur: sector, slug }]);
+    
+    currentUser = { name, email, phone };
+    document.getElementById('salon-name-display').textContent = name;
+    document.getElementById('booking-url').textContent = `yareserva.app/${slug}`;
+    showView('view-dashboard');
+    initDashboard();
+    alert('✅ Cuenta creada! Revisa tu email para confirmar.');
+  } catch(e) {
+    // Demo fallback
+    currentUser = { name, email, phone };
+    document.getElementById('salon-name-display').textContent = name;
+    document.getElementById('booking-url').textContent = `yareserva.app/${slug}`;
+    showView('view-dashboard');
+    initDashboard();
+  }
 }
 
 function doLogout() {
@@ -814,7 +854,47 @@ function shareWA() {
   window.open(`https://wa.me/?text=Reserva%20tu%20cita%20aquí:%20${encodeURIComponent(url)}`, '_blank');
 }
 
-// ===== INIT =====
+
+  // ===== SUPABASE CONFIG =====
+  const SUPABASE_URL = 'https://axleatjquybypunogkui.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_9FQEJatmTxpUdRZzWA8xyg_yor0A_EN';
+
+  async function loadReservations() {
+    if (!currentUser || !currentUser.salon_id) return;
+    try {
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const today = new Date().toISOString().split('T')[0];
+      const { data: rdvs } = await client.from('reservations')
+        .select('*').eq('salon_id', currentUser.salon_id)
+        .eq('date_rdv', today).order('heure_rdv');
+      
+      if (rdvs && rdvs.length > 0) {
+        const html = rdvs.map(r => `
+          <div class="rdv-item">
+            <div class="rdv-time">${r.heure_rdv.slice(0,5)}</div>
+            <div class="rdv-info"><div class="rdv-client">${r.client_nom}</div><div class="rdv-service">${r.service || ''}</div></div>
+            <span class="rdv-status ${r.statut === 'confirmada' ? 'confirmed' : 'pending'}">${r.statut === 'confirmada' ? 'Confirmada' : 'Pendiente'}</span>
+          </div>`).join('');
+        document.getElementById('rdv-items').innerHTML = html;
+      }
+    } catch(e) { console.log('Demo mode'); }
+  }
+
+  async function saveRdvSupabase(clientNom, phone, service, fecha, hora) {
+    if (!currentUser || !currentUser.salon_id) return false;
+    try {
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      await client.from('reservations').insert([{
+        salon_id: currentUser.salon_id,
+        client_nom: clientNom,
+        client_telephone: phone,
+        service, date_rdv: fecha, heure_rdv: hora
+      }]);
+      return true;
+    } catch(e) { return false; }
+  }
+
+  // ===== INIT =====
 initDashboard();
 </script>
 
