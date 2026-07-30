@@ -479,10 +479,10 @@
         <!-- AGENDA -->
         <div id="dash-agenda">
           <div class="stats-grid" style="margin-bottom:24px">
-            <div class="stat-card"><div class="stat-card-label">Citas hoy</div><div class="stat-card-value">8</div><div class="stat-card-sub">+2 vs ayer</div></div>
-            <div class="stat-card"><div class="stat-card-label">Esta semana</div><div class="stat-card-value">34</div><div class="stat-card-sub">+12% vs semana pasada</div></div>
-            <div class="stat-card"><div class="stat-card-label">Clientes activos</div><div class="stat-card-value">127</div><div class="stat-card-sub">+5 este mes</div></div>
-            <div class="stat-card"><div class="stat-card-label">No-shows</div><div class="stat-card-value">2%</div><div class="stat-card-sub">Gracias a los recordatorios</div></div>
+            <div class="stat-card"><div class="stat-card-label">Citas hoy</div><div class="stat-card-value" id="stat-hoy">0</div><div class="stat-card-sub">—</div></div>
+            <div class="stat-card"><div class="stat-card-label">Esta semana</div><div class="stat-card-value" id="stat-semana">0</div><div class="stat-card-sub">—</div></div>
+            <div class="stat-card"><div class="stat-card-label">Clientes activos</div><div class="stat-card-value" id="stat-clientes">0</div><div class="stat-card-sub">—</div></div>
+            <div class="stat-card"><div class="stat-card-label">No-shows</div><div class="stat-card-value">0%</div><div class="stat-card-sub">Gracias a los recordatorios</div></div>
           </div>
 
           <div class="agenda-grid">
@@ -508,12 +508,11 @@
             <div class="rdv-list">
               <div class="rdv-list-header">Citas de hoy — <span id="selected-date-label">30 de julio</span></div>
               <div id="rdv-items">
-                <div class="rdv-item"><div class="rdv-time">09:00</div><div class="rdv-info"><div class="rdv-client">María García</div><div class="rdv-service">Corte + Tinte</div></div><span class="rdv-status confirmed">Confirmada</span></div>
-                <div class="rdv-item"><div class="rdv-time">10:30</div><div class="rdv-info"><div class="rdv-client">Ana López</div><div class="rdv-service">Manicure</div></div><span class="rdv-status confirmed">Confirmada</span></div>
-                <div class="rdv-item"><div class="rdv-time">12:00</div><div class="rdv-info"><div class="rdv-client">Laura Martínez</div><div class="rdv-service">Corte de cabello</div></div><span class="rdv-status pending">Pendiente</span></div>
-                <div class="rdv-item"><div class="rdv-time">14:00</div><div class="rdv-info"><div class="rdv-client">Sofia Rodríguez</div><div class="rdv-service">Tratamiento</div></div><span class="rdv-status confirmed">Confirmada</span></div>
-                <div class="rdv-item"><div class="rdv-time">15:30</div><div class="rdv-info"><div class="rdv-client">Carmen Pérez</div><div class="rdv-service">Pedicure</div></div><span class="rdv-status confirmed">Confirmada</span></div>
-                <div class="rdv-item"><div class="rdv-time">17:00</div><div class="rdv-info"><div class="rdv-client">Isabel Torres</div><div class="rdv-service">Color completo</div></div><span class="rdv-status confirmed">Confirmada</span></div>
+                <div style="text-align:center;padding:40px 24px;color:#6B7280">
+                  <div style="font-size:40px;margin-bottom:12px">📅</div>
+                  <div style="font-size:16px;font-weight:600;margin-bottom:8px">No hay citas para hoy</div>
+                  <div style="font-size:14px">Agrega tu primera cita con el botón de arriba</div>
+                </div>
               </div>
               <div class="rdv-add">
                 <button class="btn-add-rdv" onclick="openModal('modal-rdv')">+ Agregar cita manual</button>
@@ -527,7 +526,7 @@
           <div class="clients-header">
             <div>
               <h2 style="font-size:20px;font-weight:800;margin-bottom:4px">Mis clientes</h2>
-              <p style="color:#6B7280;font-size:14px">127 clientes registrados</p>
+              <p style="color:#6B7280;font-size:14px" id="clients-count">0 clientes registrados</p>
             </div>
             <div style="display:flex;gap:12px;align-items:center">
               <input type="text" class="search-bar" placeholder="Buscar cliente..." onkeyup="filterClients(this.value)">
@@ -539,11 +538,11 @@
               <div>Cliente</div><div>Teléfono</div><div>Última visita</div><div>Servicio</div><div>Citas</div>
             </div>
             <div id="clients-list">
-              <div class="table-row"><div class="client-name-cell"><div class="client-avatar">MG</div><div>María García</div></div><div>+57 300 111 2222</div><div>28 jul 2026</div><div>Corte + Tinte</div><div><span style="background:#E6F4F1;color:#0D6E5E;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">12 citas</span></div></div>
-              <div class="table-row"><div class="client-name-cell"><div class="client-avatar">AL</div><div>Ana López</div></div><div>+57 311 333 4444</div><div>27 jul 2026</div><div>Manicure</div><div><span style="background:#E6F4F1;color:#0D6E5E;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">8 citas</span></div></div>
-              <div class="table-row"><div class="client-name-cell"><div class="client-avatar">LM</div><div>Laura Martínez</div></div><div>+57 315 555 6666</div><div>25 jul 2026</div><div>Corte</div><div><span style="background:#E6F4F1;color:#0D6E5E;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">5 citas</span></div></div>
-              <div class="table-row"><div class="client-name-cell"><div class="client-avatar">SR</div><div>Sofia Rodríguez</div></div><div>+57 318 777 8888</div><div>24 jul 2026</div><div>Tratamiento</div><div><span style="background:#E6F4F1;color:#0D6E5E;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">3 citas</span></div></div>
-              <div class="table-row"><div class="client-name-cell"><div class="client-avatar">CP</div><div>Carmen Pérez</div></div><div>+57 320 999 0000</div><div>22 jul 2026</div><div>Pedicure</div><div><span style="background:#E6F4F1;color:#0D6E5E;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">7 citas</span></div></div>
+              <div id="clients-empty" style="text-align:center;padding:60px 24px;color:#6B7280">
+                <div style="font-size:40px;margin-bottom:12px">👥</div>
+                <div style="font-size:16px;font-weight:600;margin-bottom:8px">No hay clientes todavía</div>
+                <div style="font-size:14px">Agrega tu primer cliente con el botón de arriba</div>
+              </div>
             </div>
           </div>
         </div>
