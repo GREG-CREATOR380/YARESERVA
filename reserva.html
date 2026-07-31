@@ -190,6 +190,33 @@
 
 <script>
 const SUPABASE_URL = 'https://axleatjquybypunogkui.supabase.co';
+
+  // ===== WHATSAPP CONFIRMATION =====
+  async function sendConfirmationToClient(phone, clientName, service, date, hour, salonName) {
+    try {
+      // Format phone - remove spaces and + 
+      let cleanPhone = phone.replace(/\s+/g, '').replace('+', '');
+      if (cleanPhone.startsWith('0')) cleanPhone = '57' + cleanPhone.slice(1);
+      if (!cleanPhone.startsWith('57') && cleanPhone.length === 10) cleanPhone = '57' + cleanPhone;
+      
+      const msg = encodeURIComponent(
+        `✅ *Cita confirmada en ${salonName}*\n\n` +
+        `👤 Nombre: ${clientName}\n` +
+        `💅 Servicio: ${service}\n` +
+        `📅 Fecha: ${date}\n` +
+        `⏰ Hora: ${hour}\n\n` +
+        `Te esperamos! 😊\n` +
+        `_Recibirás un recordatorio 24h antes._`
+      );
+      
+      // Send via CallMeBot
+      const CMB_APIKEY = '4681566';
+      await fetch(`https://api.callmebot.com/whatsapp.php?phone=${cleanPhone}&text=${msg}&apikey=${CMB_APIKEY}`, { mode: 'no-cors' });
+      console.log('Confirmation sent to client!');
+    } catch(e) {
+      console.log('WhatsApp confirmation error:', e);
+    }
+  }
 const SUPABASE_KEY = 'sb_publishable_9FQEJatmTxpUdRZzWA8xyg_yor0A_EN';
 
 // Get slug from URL
@@ -397,6 +424,12 @@ async function confirmarCita() {
     }
   } catch(e) {
     console.log('Demo mode');
+  }
+
+  // Send WhatsApp confirmation to client
+  if (phone) {
+    const salonNom = salonData?.nom || 'el salón';
+    sendConfirmationToClient(phone, name, selected.service?.nom, selected.dateLabel, selected.hour, salonNom);
   }
 
   // Show success
