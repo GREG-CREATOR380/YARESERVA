@@ -449,7 +449,7 @@
       </div>
       <div class="sidebar-salon">
         Mi negocio
-        <strong id="salon-name-display">Salón Diana</strong>
+        <strong id="salon-name-display">Cargando...</strong>
       </div>
       <button class="nav-item active" id="nav-agenda" onclick="showDash('agenda')"><span class="nav-icon">📅</span>Agenda</button>
       <button class="nav-item" id="nav-clientes" onclick="showDash('clientes')"><span class="nav-icon">👥</span>Clientes</button>
@@ -715,11 +715,8 @@ async function doLogin() {
     initDashboard();
     loadReservations();
   } catch(e) {
-    // Demo fallback
-    currentUser = { name: 'Salón Demo', email };
-    document.getElementById('salon-name-display').textContent = 'Salón Demo';
-    showView('view-dashboard');
-    initDashboard();
+    console.error('Login error:', e);
+    alert('Error al iniciar sesión: ' + e.message);
   }
 }
 
