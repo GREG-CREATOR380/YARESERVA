@@ -193,6 +193,7 @@
   }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -576,23 +577,25 @@
             <div class="qr-card">
               <h3 style="font-size:18px;font-weight:700;margin-bottom:8px">Tu código QR</h3>
               <p style="color:#6B7280;font-size:14px">Imprime y coloca en tu recepción. Tus clientes escanean y reservan al instante.</p>
-              <div class="qr-placeholder">🔲</div>
-              <button class="btn-primary" style="width:100%;padding:12px;font-size:15px;border-radius:10px;margin-top:8px">Descargar QR (PNG)</button>
-              <button style="width:100%;padding:12px;font-size:15px;border-radius:10px;margin-top:8px;background:#F3F4F6;border:none;cursor:pointer;font-family:inherit;font-weight:600">Imprimir QR</button>
+              <div style="margin:24px auto;width:200px;height:200px;display:flex;align-items:center;justify-content:center">
+                <canvas id="qr-canvas"></canvas>
+              </div>
+              <button onclick="downloadQR()" style="width:100%;padding:12px;font-size:15px;border-radius:10px;margin-top:8px;background:#0D6E5E;color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">⬇️ Descargar QR (PNG)</button>
+              <button onclick="printQR()" style="width:100%;padding:12px;font-size:15px;border-radius:10px;margin-top:8px;background:#F3F4F6;border:none;cursor:pointer;font-family:inherit;font-weight:600">🖨️ Imprimir QR</button>
             </div>
             <div>
               <div class="qr-card" style="margin-bottom:20px">
                 <h3 style="font-size:18px;font-weight:700;margin-bottom:8px">Tu enlace de reserva</h3>
-                <p style="color:#6B7280;font-size:14px;margin-bottom:16px">Comparte este enlace en Instagram, TikTok y Facebook para que tus seguidores reserven en 1 clic.</p>
-                <div class="qr-url" id="booking-url">yareserva.app/salon-diana</div>
-                <button onclick="copyLink()" style="width:100%;padding:12px;font-size:15px;border-radius:10px;margin-top:12px;background:#0D6E5E;color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">Copiar enlace</button>
+                <p style="color:#6B7280;font-size:14px;margin-bottom:16px">Comparte en Instagram, TikTok y Facebook para que tus seguidores reserven en 1 clic.</p>
+                <div class="qr-url" id="booking-url">Cargando...</div>
+                <button onclick="copyLink()" style="width:100%;padding:12px;font-size:15px;border-radius:10px;margin-top:12px;background:#0D6E5E;color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">📋 Copiar enlace</button>
               </div>
               <div class="qr-card">
                 <h3 style="font-size:18px;font-weight:700;margin-bottom:16px">Compartir en redes</h3>
                 <div style="display:flex;flex-direction:column;gap:10px">
-                  <button onclick="shareWA()" style="padding:12px;font-size:14px;border-radius:10px;background:#25D366;color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600;display:flex;align-items:center;gap:8px;justify-content:center">💬 Compartir por WhatsApp</button>
-                  <button style="padding:12px;font-size:14px;border-radius:10px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">📸 Compartir en Instagram</button>
-                  <button style="padding:12px;font-size:14px;border-radius:10px;background:#1877F2;color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">📘 Compartir en Facebook</button>
+                  <button onclick="shareWA()" style="padding:12px;font-size:14px;border-radius:10px;background:#25D366;color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">💬 Compartir por WhatsApp</button>
+                  <button onclick="shareIG()" style="padding:12px;font-size:14px;border-radius:10px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">📸 Compartir en Instagram</button>
+                  <button onclick="shareFB()" style="padding:12px;font-size:14px;border-radius:10px;background:#1877F2;color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">📘 Compartir en Facebook</button>
                 </div>
               </div>
             </div>
@@ -836,6 +839,15 @@ async function showDash(section) {
   const titles = { agenda:'Agenda', clientes:'Clientes', qr:'QR & Enlace', stats:'Estadísticas', config:'Configuración' };
   document.getElementById('dash-title').textContent = titles[section];
   
+  // Generate QR when QR section opens
+  if (section === 'qr') {
+    setTimeout(() => {
+      const slug = currentUser?.slug || 'gregory';
+      const url = `https://greg-creator380.github.io/YARESERVA/reserva.html?salon=${slug}`;
+      generateQR(url);
+    }, 300);
+  }
+
   // Load config data from Supabase
   if (section === 'config') {
     try {
@@ -1047,14 +1059,76 @@ function filterClients(q) {
   });
 }
 
+let bookingURL = '';
+
+function generateQR(url) {
+  bookingURL = url;
+  document.getElementById('booking-url').textContent = url;
+  
+  const canvas = document.getElementById('qr-canvas');
+  if (canvas && window.QRCode) {
+    QRCode.toCanvas(canvas, url, {
+      width: 200,
+      margin: 2,
+      color: { dark: '#1A1209', light: '#FFFFFF' }
+    }, (err) => { if(err) console.error(err); });
+  }
+}
+
+function downloadQR() {
+  const canvas = document.getElementById('qr-canvas');
+  if (!canvas) return;
+  const link = document.createElement('a');
+  link.download = 'QR_YaReserva.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function printQR() {
+  const canvas = document.getElementById('qr-canvas');
+  if (!canvas) return;
+  const imgData = canvas.toDataURL('image/png');
+  const salonNom = document.getElementById('salon-name-display').textContent;
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <html><head><title>QR Code - ${salonNom}</title>
+    <style>
+      body { font-family: Arial, sans-serif; text-align: center; padding: 40px; }
+      h1 { color: #0D6E5E; font-size: 28px; margin-bottom: 8px; }
+      p { color: #6B7280; font-size: 16px; margin-bottom: 24px; }
+      img { width: 250px; height: 250px; border: 3px solid #0D6E5E; border-radius: 12px; padding: 10px; }
+      .url { margin-top: 20px; font-size: 14px; color: #0D6E5E; font-weight: bold; }
+      .powered { margin-top: 16px; font-size: 12px; color: #D1D5DB; }
+    </style></head>
+    <body>
+      <h1>${salonNom}</h1>
+      <p>Escanea para reservar tu cita online</p>
+      <img src="${imgData}">
+      <div class="url">${bookingURL}</div>
+      <div class="powered">Powered by YaReserva</div>
+      <script>window.onload = () => { window.print(); }<\/script>
+    </body></html>
+  `);
+  win.document.close();
+}
+
 function copyLink() {
-  const url = document.getElementById('booking-url').textContent;
-  navigator.clipboard.writeText(url).then(() => alert('✅ Enlace copiado!'));
+  navigator.clipboard.writeText(bookingURL).then(() => alert('✅ Enlace copiado!'));
 }
 
 function shareWA() {
-  const url = document.getElementById('booking-url').textContent;
-  window.open(`https://wa.me/?text=Reserva%20tu%20cita%20aquí:%20${encodeURIComponent(url)}`, '_blank');
+  const msg = `Reserva tu cita en ${document.getElementById('salon-name-display').textContent}: ${bookingURL}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function shareIG() {
+  navigator.clipboard.writeText(bookingURL).then(() => {
+    alert('✅ Enlace copiado! Pégalo en tu bio de Instagram.');
+  });
+}
+
+function shareFB() {
+  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(bookingURL)}`, '_blank');
 }
 
 
@@ -1087,7 +1161,7 @@ function shareWA() {
       const { data: salon } = await client.from('salons').select('*').eq('email', user.email).single();
       if (!salon) return;
 
-      currentUser = { ...currentUser, salon_id: salon.id, name: salon.nom };
+      currentUser = { ...currentUser, salon_id: salon.id, name: salon.nom, slug: salon.slug };
       document.getElementById('salon-name-display').textContent = salon.nom;
 
       // Load today reservations
