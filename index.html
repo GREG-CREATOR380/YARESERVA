@@ -917,7 +917,8 @@ async function saveRdv() {
                 <div class="rdv-client">${clientNom}</div>
                 <div class="rdv-service">${service}</div>
               </div>
-              <span class="rdv-status confirmed">Confirmada</span>`;
+              <span class="rdv-status confirmed">Confirmada</span>
+              <button onclick="deleteRdv('${Date.now()}')" style="background:none;border:none;cursor:pointer;color:#E74C3C;font-size:18px;padding:4px 8px;border-radius:6px" title="Cancelar cita">🗑️</button>`;
             rdvItems.appendChild(div);
             
             const stat = document.getElementById('stat-hoy');
@@ -1058,6 +1059,45 @@ function filterClients(q) {
   });
 }
 
+async function deleteRdv(id) {
+  if (!confirm('¿Cancelar esta cita?')) return;
+  
+  try {
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { error } = await client.from('reservations').delete().eq('id', id);
+    
+    if (!error) {
+      // Remove from UI
+      const el = document.getElementById(`rdv-${id}`);
+      if (el) {
+        el.style.transition = 'opacity 0.3s';
+        el.style.opacity = '0';
+        setTimeout(() => {
+          el.remove();
+          // Update stats
+          const stat = document.getElementById('stat-hoy');
+          if (stat) stat.textContent = Math.max(0, parseInt(stat.textContent) - 1);
+          // Show empty state if no more rdvs
+          const rdvItems = document.getElementById('rdv-items');
+          if (rdvItems && rdvItems.children.length === 0) {
+            rdvItems.innerHTML = `<div style="text-align:center;padding:40px 24px;color:#6B7280">
+              <div style="font-size:40px;margin-bottom:12px">📅</div>
+              <div style="font-size:16px;font-weight:600;margin-bottom:8px">No hay citas para hoy</div>
+              <div style="font-size:14px">Agrega tu primera cita con el botón de arriba</div>
+            </div>`;
+          }
+        }, 300);
+      }
+      alert('✅ Cita cancelada!');
+    }
+  } catch(e) {
+    // Demo mode - just remove from UI
+    const el = document.getElementById(`rdv-${id}`);
+    if (el) el.remove();
+    alert('✅ Cita cancelada!');
+  }
+}
+
 let bookingURL = '';
 
 function generateQR(url) {
@@ -1173,10 +1213,14 @@ function shareFB() {
 
       if (rdvs && rdvs.length > 0) {
         const html = rdvs.map(r => `
-          <div class="rdv-item">
+          <div class="rdv-item" id="rdv-${r.id}">
             <div class="rdv-time">${r.heure_rdv.slice(0,5)}</div>
-            <div class="rdv-info"><div class="rdv-client">${r.client_nom}</div><div class="rdv-service">${r.service || ''}</div></div>
+            <div class="rdv-info">
+              <div class="rdv-client">${r.client_nom}</div>
+              <div class="rdv-service">${r.service || ''}</div>
+            </div>
             <span class="rdv-status ${r.statut === 'confirmada' ? 'confirmed' : 'pending'}">${r.statut === 'confirmada' ? 'Confirmada' : 'Pendiente'}</span>
+            <button onclick="deleteRdv('${r.id}')" style="background:none;border:none;cursor:pointer;color:#E74C3C;font-size:18px;padding:4px 8px;border-radius:6px;transition:background .2s" title="Cancelar cita" onmouseover="this.style.background='#FDEDEC'" onmouseout="this.style.background='none'">🗑️</button>
           </div>`).join('');
         document.getElementById('rdv-items').innerHTML = html;
         document.getElementById('stat-hoy').textContent = rdvs.length;
