@@ -219,7 +219,7 @@ const EMOJI_MAP = {
 async function init() {
   try {
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const { data: salon } = await client.from('salons').select('*').eq('slug', slug).single();
+    const { data: salon } = await client.from('salons').select('*, capacidad').eq('slug', slug).single();
     
     if (salon) {
       salonData = salon;
@@ -302,20 +302,39 @@ function selectDate(dateStr, label, el) {
 async function renderHours(dateStr) {
   const hours = ['09:00','09:30','10:00','10:30','11:00','11:30','12:00','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00'];
   
-  let takenHours = [];
+  // Show loading
+  document.getElementById('hours-grid').innerHTML = '<div style="grid-column:span 3;text-align:center;padding:20px;color:#6B7280">Cargando horarios...</div>';
+
+  let hoursCount = {};
+  let capacidad = 1;
+  
   try {
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     if (salonData) {
+      // Get capacity from salon
+      capacidad = salonData.capacidad || 1;
+      
+      // Count reservations per hour
       const { data: rdvs } = await client.from('reservations')
         .select('heure_rdv').eq('salon_id', salonData.id).eq('date_rdv', dateStr);
-      takenHours = rdvs ? rdvs.map(r => r.heure_rdv.slice(0,5)) : [];
+      
+      if (rdvs) {
+        rdvs.forEach(r => {
+          const h = r.heure_rdv.slice(0,5);
+          hoursCount[h] = (hoursCount[h] || 0) + 1;
+        });
+      }
     }
   } catch(e) {}
   
   const grid = document.getElementById('hours-grid');
   grid.innerHTML = hours.map(h => {
-    const taken = takenHours.includes(h);
-    return `<button class="hour-btn ${taken ? 'taken' : ''}" ${taken ? 'disabled' : ''} onclick="selectHour('${h}', this)">${h}</button>`;
+    const count = hoursCount[h] || 0;
+    const isFull = count >= capacidad;
+    const spotsLeft = capacidad - count;
+    const label = isFull ? `${h}<br><small>Completo</small>` : 
+                  (capacidad > 1 && spotsLeft < capacidad) ? `${h}<br><small>${spotsLeft} lugar${spotsLeft > 1 ? 'es' : ''}</small>` : h;
+    return `<button class="hour-btn ${isFull ? 'taken' : ''}" ${isFull ? 'disabled' : ''} onclick="selectHour('${h}', this)">${label}</button>`;
   }).join('');
 }
 

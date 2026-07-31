@@ -623,7 +623,17 @@
               <h3 style="font-size:16px;font-weight:700;margin-bottom:20px">Información del negocio</h3>
               <div class="form-group"><label>Nombre del negocio</label><input type="text" value="Salón Diana" id="config-salon-name"></div>
               <div class="form-group"><label>WhatsApp</label><input type="tel" value="+57 300 000 0000"></div>
-              <div class="form-group"><label>Dirección</label><input type="text" placeholder="Ej: Calle 15 #5-30, Granada, Cali"></div>
+              <div class="form-group"><label>Dirección</label><input type="text" id="config-direccion" placeholder="Ej: Calle 15 #5-30, Granada, Cali"></div>
+              <div class="form-group">
+                <label>Número de empleados / plazas por horario</label>
+                <select id="config-capacidad">
+                  <option value="1">1 empleado (1 cita por horario)</option>
+                  <option value="2">2 empleados (2 citas por horario)</option>
+                  <option value="3">3 empleados (3 citas por horario)</option>
+                  <option value="4">4 empleados (4 citas por horario)</option>
+                  <option value="5">5 empleados (5 citas por horario)</option>
+                </select>
+              </div>
               <button class="btn-submit" onclick="saveConfig()">Guardar cambios</button>
             </div>
             <div class="form-card">
@@ -817,7 +827,7 @@ function selectDay(d) {
   document.getElementById('selected-date-label').textContent = `${d} de ${months[calMonth]}`;
 }
 
-function showDash(section) {
+async function showDash(section) {
   ['agenda','clientes','qr','stats','config'].forEach(s => {
     document.getElementById(`dash-${s}`).style.display = s === section ? 'block' : 'none';
     const nav = document.getElementById(`nav-${s}`);
@@ -825,6 +835,23 @@ function showDash(section) {
   });
   const titles = { agenda:'Agenda', clientes:'Clientes', qr:'QR & Enlace', stats:'Estadísticas', config:'Configuración' };
   document.getElementById('dash-title').textContent = titles[section];
+  
+  // Load config data from Supabase
+  if (section === 'config') {
+    try {
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: { user } } = await client.auth.getUser();
+      if (user) {
+        const { data: salon } = await client.from('salons').select('*').eq('email', user.email).single();
+        if (salon) {
+          document.getElementById('config-salon-name').value = salon.nom || '';
+          if (document.getElementById('config-capacidad')) {
+            document.getElementById('config-capacidad').value = salon.capacidad || 1;
+          }
+        }
+      }
+    } catch(e) {}
+  }
 }
 
 // ===== MODALS =====
@@ -995,8 +1022,21 @@ function addClientToUI(name, phone) {
   if (statEl) statEl.textContent = parseInt(statEl.textContent || 0) + 1;
 }
 
-function saveConfig() {
+async function saveConfig() {
   const name = document.getElementById('config-salon-name').value;
+  const capacidad = document.getElementById('config-capacidad')?.value || 1;
+  
+  try {
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { data: { user } } = await client.auth.getUser();
+    if (user) {
+      await client.from('salons').update({ 
+        nom: name,
+        capacidad: parseInt(capacidad)
+      }).eq('email', user.email);
+    }
+  } catch(e) { console.log('Error saving config:', e); }
+  
   document.getElementById('salon-name-display').textContent = name;
   alert('✅ Configuración guardada!');
 }
