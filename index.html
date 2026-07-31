@@ -813,22 +813,159 @@ function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 window.onclick = e => { if(e.target.classList.contains('modal-overlay')) e.target.classList.remove('open'); }
 
-function saveRdv() {
-  alert('✅ Cita guardada correctamente!');
+async function saveRdv() {
+  const clientNom = document.querySelector('#modal-rdv input[type="text"]').value;
+  const phone = document.querySelector('#modal-rdv input[type="tel"]').value;
+  const service = document.querySelector('#modal-rdv select').value;
+  const fecha = document.querySelector('#modal-rdv input[type="date"]').value;
+  const hora = document.querySelector('#modal-rdv input[type="time"]').value;
+
+  if (!clientNom || !fecha || !hora) {
+    alert('Por favor complete nombre, fecha y hora.');
+    return;
+  }
+
+  try {
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { data: { user } } = await client.auth.getUser();
+
+    if (user) {
+      // Get salon_id
+      const { data: salon } = await client.from('salons').select('id').eq('email', user.email).single();
+      
+      if (salon) {
+        const { error } = await client.from('reservations').insert([{
+          salon_id: salon.id,
+          client_nom: clientNom,
+          client_telephone: phone,
+          service, 
+          date_rdv: fecha, 
+          heure_rdv: hora,
+          statut: 'confirmada'
+        }]);
+
+        if (!error) {
+          // Add to UI immediately
+          const today = new Date().toISOString().split('T')[0];
+          if (fecha === today) {
+            const rdvItems = document.getElementById('rdv-items');
+            // Remove empty state if exists
+            const emptyState = rdvItems.querySelector('div[style*="text-align:center"]');
+            if (emptyState) emptyState.remove();
+            
+            const div = document.createElement('div');
+            div.className = 'rdv-item';
+            div.innerHTML = `
+              <div class="rdv-time">${hora.slice(0,5)}</div>
+              <div class="rdv-info">
+                <div class="rdv-client">${clientNom}</div>
+                <div class="rdv-service">${service}</div>
+              </div>
+              <span class="rdv-status confirmed">Confirmada</span>`;
+            rdvItems.appendChild(div);
+            
+            // Update stat
+            const stat = document.getElementById('stat-hoy');
+            if (stat) stat.textContent = parseInt(stat.textContent || 0) + 1;
+          }
+          
+          closeModal('modal-rdv');
+          alert('✅ Cita guardada correctamente!');
+          return;
+        }
+      }
+    }
+  } catch(e) {
+    console.log('Error:', e);
+  }
+
+  // Fallback demo mode
+  const rdvItems = document.getElementById('rdv-items');
+  const emptyState = rdvItems.querySelector('div[style*="text-align:center"]');
+  if (emptyState) emptyState.remove();
+  
+  const div = document.createElement('div');
+  div.className = 'rdv-item';
+  div.innerHTML = `
+    <div class="rdv-time">${hora ? hora.slice(0,5) : '--:--'}</div>
+    <div class="rdv-info">
+      <div class="rdv-client">${clientNom}</div>
+      <div class="rdv-service">${service}</div>
+    </div>
+    <span class="rdv-status confirmed">Confirmada</span>`;
+  rdvItems.appendChild(div);
+  
+  const stat = document.getElementById('stat-hoy');
+  if (stat) stat.textContent = parseInt(stat.textContent || 0) + 1;
+  
   closeModal('modal-rdv');
+  alert('✅ Cita guardada (modo demo)!');
 }
 
-function saveCliente() {
+async function saveCliente() {
   const name = document.getElementById('new-client-name').value;
   const phone = document.getElementById('new-client-phone').value;
   if(!name || !phone) { alert('Por favor complete nombre y teléfono.'); return; }
+
+  try {
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { data: { user } } = await client.auth.getUser();
+
+    if (user) {
+      const { data: salon } = await client.from('salons').select('id').eq('email', user.email).single();
+      
+      if (salon) {
+        const { error } = await client.from('clients').insert([{
+          salon_id: salon.id,
+          nom: name,
+          telephone: phone
+        }]);
+
+        if (!error) {
+          addClientToUI(name, phone);
+          closeModal('modal-cliente');
+          alert('✅ Cliente guardado!');
+          return;
+        }
+      }
+    }
+  } catch(e) {
+    console.log('Error:', e);
+  }
+
+  // Fallback demo
+  addClientToUI(name, phone);
+  closeModal('modal-cliente');
+  alert('✅ Cliente agregado (modo demo)!');
+}
+
+function addClientToUI(name, phone) {
   const initials = name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+  // Remove empty state
+  const empty = document.getElementById('clients-empty');
+  if (empty) empty.remove();
+  
   const row = document.createElement('div');
   row.className = 'table-row';
-  row.innerHTML = `<div class="client-name-cell"><div class="client-avatar">${initials}</div><div>${name}</div></div><div>${phone}</div><div>Hoy</div><div>—</div><div><span style="background:#E6F4F1;color:#0D6E5E;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">Nueva</span></div>`;
+  row.innerHTML = `
+    <div class="client-name-cell">
+      <div class="client-avatar">${initials}</div>
+      <div>${name}</div>
+    </div>
+    <div>${phone}</div>
+    <div>Hoy</div>
+    <div>—</div>
+    <div><span style="background:#E6F4F1;color:#0D6E5E;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">Nueva</span></div>`;
   document.getElementById('clients-list').prepend(row);
-  closeModal('modal-cliente');
-  alert('✅ Cliente agregado!');
+  
+  // Update count
+  const countEl = document.getElementById('clients-count');
+  if (countEl) {
+    const current = parseInt(countEl.textContent) || 0;
+    countEl.textContent = `${current + 1} clientes registrados`;
+  }
+  const statEl = document.getElementById('stat-clientes');
+  if (statEl) statEl.textContent = parseInt(statEl.textContent || 0) + 1;
 }
 
 function saveConfig() {
@@ -859,14 +996,24 @@ function shareWA() {
   const SUPABASE_KEY = 'sb_publishable_9FQEJatmTxpUdRZzWA8xyg_yor0A_EN';
 
   async function loadReservations() {
-    if (!currentUser || !currentUser.salon_id) return;
     try {
       const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return;
+
+      // Get salon
+      const { data: salon } = await client.from('salons').select('*').eq('email', user.email).single();
+      if (!salon) return;
+
+      currentUser = { ...currentUser, salon_id: salon.id, name: salon.nom };
+      document.getElementById('salon-name-display').textContent = salon.nom;
+
+      // Load today reservations
       const today = new Date().toISOString().split('T')[0];
       const { data: rdvs } = await client.from('reservations')
-        .select('*').eq('salon_id', currentUser.salon_id)
+        .select('*').eq('salon_id', salon.id)
         .eq('date_rdv', today).order('heure_rdv');
-      
+
       if (rdvs && rdvs.length > 0) {
         const html = rdvs.map(r => `
           <div class="rdv-item">
@@ -875,8 +1022,32 @@ function shareWA() {
             <span class="rdv-status ${r.statut === 'confirmada' ? 'confirmed' : 'pending'}">${r.statut === 'confirmada' ? 'Confirmada' : 'Pendiente'}</span>
           </div>`).join('');
         document.getElementById('rdv-items').innerHTML = html;
+        document.getElementById('stat-hoy').textContent = rdvs.length;
       }
-    } catch(e) { console.log('Demo mode'); }
+
+      // Load clients
+      const { data: clients, count } = await client.from('clients')
+        .select('*', { count: 'exact' }).eq('salon_id', salon.id).order('created_at', { ascending: false });
+
+      if (clients && clients.length > 0) {
+        document.getElementById('clients-empty').style.display = 'none';
+        document.getElementById('clients-count').textContent = `${clients.length} clientes registrados`;
+        document.getElementById('stat-clientes').textContent = clients.length;
+        
+        const rows = clients.map(c => {
+          const initials = c.nom.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+          return `<div class="table-row">
+            <div class="client-name-cell"><div class="client-avatar">${initials}</div><div>${c.nom}</div></div>
+            <div>${c.telephone || '—'}</div>
+            <div>${c.derniere_visite || 'Sin visita'}</div>
+            <div>—</div>
+            <div><span style="background:#E6F4F1;color:#0D6E5E;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">0 citas</span></div>
+          </div>`;
+        }).join('');
+        document.getElementById('clients-list').innerHTML = rows;
+      }
+
+    } catch(e) { console.log('Demo mode:', e); }
   }
 
   async function saveRdvSupabase(clientNom, phone, service, fecha, hora) {
