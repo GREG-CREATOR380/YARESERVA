@@ -1064,28 +1064,31 @@ function generateQR(url) {
   bookingURL = url;
   document.getElementById('booking-url').textContent = url;
   
+  // Use quickchart.io - very reliable
   const encoded = encodeURIComponent(url);
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}&bgcolor=ffffff&color=000000&margin=10`;
+  const qrUrl = `https://quickchart.io/qr?text=${encoded}&size=200&margin=2`;
   
   const img = document.getElementById('qr-img');
   if (img) {
     img.src = qrUrl;
+    img.onload = () => console.log('QR loaded!');
     img.onerror = () => {
-      // Fallback to another service
-      img.src = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encoded}`;
+      console.log('QR failed, trying backup...');
+      // Backup: goqr.me
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}`;
     };
   }
 }
 
 function downloadQR() {
   const encoded = encodeURIComponent(bookingURL);
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encoded}&bgcolor=ffffff&color=000000&margin=10&format=png`;
+  const qrUrl = `https://quickchart.io/qr?text=${encoded}&size=400&margin=2`;
   window.open(qrUrl, '_blank');
 }
 
 function printQR() {
   const encoded = encodeURIComponent(bookingURL);
-  const imgData = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encoded}&bgcolor=ffffff&color=000000&margin=10`;
+  const imgData = `https://quickchart.io/qr?text=${encoded}&size=300&margin=2`;
   const salonNom = document.getElementById('salon-name-display').textContent;
   const win = window.open('', '_blank');
   win.document.write(`
