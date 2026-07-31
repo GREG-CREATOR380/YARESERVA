@@ -868,7 +868,6 @@ async function saveRdv() {
           const today = new Date().toISOString().split('T')[0];
           if (fecha === today) {
             const rdvItems = document.getElementById('rdv-items');
-            // Remove empty state if exists
             const emptyState = rdvItems.querySelector('div[style*="text-align:center"]');
             if (emptyState) emptyState.remove();
             
@@ -883,13 +882,22 @@ async function saveRdv() {
               <span class="rdv-status confirmed">Confirmada</span>`;
             rdvItems.appendChild(div);
             
-            // Update stat
             const stat = document.getElementById('stat-hoy');
             if (stat) stat.textContent = parseInt(stat.textContent || 0) + 1;
           }
+
+          // Send WhatsApp notification to salon owner
+          const salonNom = document.getElementById('salon-name-display').textContent;
+          const msg = `🆕 Nueva cita en ${salonNom}!
+👤 Cliente: ${clientNom}
+💅 Servicio: ${service}
+📅 Fecha: ${fecha}
+⏰ Hora: ${hora}
+📱 Tel: ${phone || 'No indicado'}`;
+          sendWhatsApp(msg);
           
           closeModal('modal-rdv');
-          alert('✅ Cita guardada correctamente!');
+          alert('✅ Cita guardada! Recibirás un WhatsApp de confirmación.');
           return;
         }
       }
@@ -1013,6 +1021,21 @@ function shareWA() {
   // ===== SUPABASE CONFIG =====
   const SUPABASE_URL = 'https://axleatjquybypunogkui.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_9FQEJatmTxpUdRZzWA8xyg_yor0A_EN';
+
+  // ===== CALLMEBOT WHATSAPP =====
+  const CMB_PHONE = '573146308300';
+  const CMB_APIKEY = '4681566';
+
+  async function sendWhatsApp(message) {
+    try {
+      const text = encodeURIComponent(message);
+      const url = `https://api.callmebot.com/whatsapp.php?phone=${CMB_PHONE}&text=${text}&apikey=${CMB_APIKEY}`;
+      await fetch(url, { mode: 'no-cors' });
+      console.log('WhatsApp sent!');
+    } catch(e) {
+      console.log('WhatsApp error:', e);
+    }
+  }
 
   async function loadReservations() {
     try {
