@@ -193,7 +193,6 @@
   }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -577,8 +576,8 @@
             <div class="qr-card">
               <h3 style="font-size:18px;font-weight:700;margin-bottom:8px">Tu código QR</h3>
               <p style="color:#6B7280;font-size:14px">Imprime y coloca en tu recepción. Tus clientes escanean y reservan al instante.</p>
-              <div style="margin:24px auto;width:220px;height:220px;display:flex;align-items:center;justify-content:center;background:#fff;border:2px solid #EFEFEF;border-radius:12px;padding:10px">
-                <canvas id="qr-canvas" style="background:#fff"></canvas>
+              <div id="qr-container" style="margin:24px auto;width:220px;height:220px;display:flex;align-items:center;justify-content:center;background:#fff;border:2px solid #EFEFEF;border-radius:12px;padding:10px">
+                <div style="color:#6B7280;font-size:13px;text-align:center">Generando QR...</div>
               </div>
               <button onclick="downloadQR()" style="width:100%;padding:12px;font-size:15px;border-radius:10px;margin-top:8px;background:#0D6E5E;color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">⬇️ Descargar QR (PNG)</button>
               <button onclick="printQR()" style="width:100%;padding:12px;font-size:15px;border-radius:10px;margin-top:8px;background:#F3F4F6;border:none;cursor:pointer;font-family:inherit;font-weight:600">🖨️ Imprimir QR</button>
@@ -1065,38 +1064,29 @@ function generateQR(url) {
   bookingURL = url;
   document.getElementById('booking-url').textContent = url;
   
-  const canvas = document.getElementById('qr-canvas');
-  if (canvas && window.QRCode) {
-    canvas.width = 200;
-    canvas.height = 200;
-    QRCode.toCanvas(canvas, url, {
-      width: 200,
-      margin: 2,
-      errorCorrectionLevel: 'H',
-      color: { dark: '#000000', light: '#ffffff' }
-    }, (err) => { 
-      if(err) {
-        console.error('QR error:', err);
-      } else {
-        console.log('QR generated successfully!');
-      }
-    });
+  // Use Google Charts API to generate QR
+  const encoded = encodeURIComponent(url);
+  const qrUrl = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encoded}&choe=UTF-8`;
+  
+  const container = document.getElementById('qr-container');
+  if (container) {
+    container.innerHTML = `<img src="${qrUrl}" width="200" height="200" style="border-radius:8px;display:block" id="qr-img" crossorigin="anonymous">`;
   }
 }
 
 function downloadQR() {
-  const canvas = document.getElementById('qr-canvas');
-  if (!canvas) return;
+  const encoded = encodeURIComponent(bookingURL);
+  const qrUrl = `https://chart.googleapis.com/chart?chs=400x400&cht=qr&chl=${encoded}&choe=UTF-8`;
   const link = document.createElement('a');
   link.download = 'QR_YaReserva.png';
-  link.href = canvas.toDataURL('image/png');
+  link.href = qrUrl;
+  link.target = '_blank';
   link.click();
 }
 
 function printQR() {
-  const canvas = document.getElementById('qr-canvas');
-  if (!canvas) return;
-  const imgData = canvas.toDataURL('image/png');
+  const encoded = encodeURIComponent(bookingURL);
+  const imgData = `https://chart.googleapis.com/chart?chs=400x400&cht=qr&chl=${encoded}&choe=UTF-8`;
   const salonNom = document.getElementById('salon-name-display').textContent;
   const win = window.open('', '_blank');
   win.document.write(`
