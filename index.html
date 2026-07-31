@@ -638,6 +638,17 @@
               </div>
               <button class="btn-submit" onclick="saveConfig()">Guardar cambios</button>
             </div>
+
+            <!-- SERVICES SECTION -->
+            <div class="form-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+                <h3 style="font-size:16px;font-weight:700">Mis servicios</h3>
+                <button onclick="openModal('modal-service')" style="background:var(--orange);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">+ Agregar</button>
+              </div>
+              <div id="services-config-list">
+                <div style="text-align:center;padding:20px;color:#6B7280;font-size:14px">Cargando servicios...</div>
+              </div>
+            </div>
             <div class="form-card">
               <h3 style="font-size:16px;font-weight:700;margin-bottom:20px">Horarios de atención</h3>
               <div class="form-group"><label>Días de apertura</label>
@@ -686,6 +697,28 @@
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modal-rdv')">Cancelar</button>
       <button class="btn-confirm" onclick="saveRdv()">Guardar cita</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nuevo Servicio -->
+<div class="modal-overlay" id="modal-service">
+  <div class="modal">
+    <div class="modal-title">Nuevo servicio</div>
+    <div class="form-group"><label>Nombre del servicio *</label><input type="text" id="svc-nom" placeholder="Ej: Corte de cabello"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label>Duración (minutos)</label><input type="number" id="svc-duree" value="45" min="15" step="15"></div>
+      <div class="form-group"><label>Precio (COP)</label><input type="number" id="svc-prix" value="25000" min="0" step="1000"></div>
+    </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="svc-mostrar-precio" checked style="width:auto">
+        Mostrar precio a los clientes
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-service')">Cancelar</button>
+      <button class="btn-confirm" onclick="saveService()">Guardar servicio</button>
     </div>
   </div>
 </div>
@@ -870,6 +903,8 @@ async function showDash(section) {
         }
       }
     } catch(e) {}
+    // Load services
+    loadServices();
   }
 }
 
@@ -1065,6 +1100,83 @@ function filterClients(q) {
   document.querySelectorAll('#clients-list .table-row').forEach(row => {
     row.style.display = row.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
   });
+}
+
+// ===== SERVICES =====
+async function loadServices() {
+  try {
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return;
+    
+    const { data: salon } = await client.from('salons').select('id').eq('email', user.email).single();
+    if (!salon) return;
+    
+    const { data: services } = await client.from('services').select('*').eq('salon_id', salon.id).eq('actif', true).order('created_at');
+    
+    if (services && services.length > 0) {
+      const html = services.map(s => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #F3F4F6" id="svc-${s.id}">
+          <div>
+            <div style="font-size:15px;font-weight:600">${s.nom}</div>
+            <div style="font-size:13px;color:#6B7280">${s.duree} min · ${s.prix > 0 ? s.prix.toLocaleString() + ' COP' : 'Precio a consultar'}</div>
+          </div>
+          <button onclick="deleteService('${s.id}')" style="background:none;border:none;cursor:pointer;color:#E74C3C;font-size:18px;padding:4px 8px;border-radius:6px" title="Eliminar">🗑️</button>
+        </div>`).join('');
+      document.getElementById('services-config-list').innerHTML = html;
+      
+      // Update modal service select too
+      const select = document.getElementById('rdv-service');
+      if (select) {
+        select.innerHTML = services.map(s => `<option value="${s.nom}">${s.nom} (${s.duree} min)</option>`).join('');
+      }
+    } else {
+      document.getElementById('services-config-list').innerHTML = '<div style="text-align:center;padding:20px;color:#6B7280;font-size:14px">No hay servicios. ¡Agrega el primero!</div>';
+    }
+  } catch(e) { console.log('Error loading services:', e); }
+}
+
+async function saveService() {
+  const nom = document.getElementById('svc-nom').value;
+  const duree = parseInt(document.getElementById('svc-duree').value) || 45;
+  const prix = parseInt(document.getElementById('svc-prix').value) || 0;
+  
+  if (!nom) { alert('Por favor ingresa el nombre del servicio.'); return; }
+  
+  try {
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return;
+    
+    const { data: salon } = await client.from('salons').select('id').eq('email', user.email).single();
+    if (!salon) return;
+    
+    const { error } = await client.from('services').insert([{
+      salon_id: salon.id,
+      nom, duree, prix, actif: true
+    }]);
+    
+    if (!error) {
+      closeModal('modal-service');
+      document.getElementById('svc-nom').value = '';
+      document.getElementById('svc-duree').value = '45';
+      document.getElementById('svc-prix').value = '25000';
+      await loadServices();
+      alert('✅ Servicio agregado!');
+    }
+  } catch(e) { console.log('Error saving service:', e); }
+}
+
+async function deleteService(id) {
+  if (!confirm('¿Eliminar este servicio?')) return;
+  
+  try {
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    await client.from('services').update({ actif: false }).eq('id', id);
+    const el = document.getElementById(`svc-${id}`);
+    if (el) el.remove();
+    alert('✅ Servicio eliminado!');
+  } catch(e) { console.log('Error deleting service:', e); }
 }
 
 async function deleteRdv(id) {
