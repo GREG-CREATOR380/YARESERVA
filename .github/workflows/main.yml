@@ -1,54 +1,37 @@
-name: Rappels YaReserva 24h
-
-on:
-  schedule:
-    - cron: '0 * * * *'  # Toutes les heures
-  workflow_dispatch:  # Pour tester manuellement
-
-jobs:
-  send-reminders:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Envoyer rappels WhatsApp
-        run: |
-          node << 'EOF'
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          const dateStr = tomorrow.toISOString().split('T')[0];
-          
-          async function sendReminders() {
-            // Get reservations for tomorrow
-            const res = await fetch(
-              `${{ secrets.SUPABASE_URL }}/rest/v1/reservations?date_rdv=eq.${dateStr}&statut=eq.confirmada&select=*,salons(nom,whatsapp)`,
-              { headers: {
-                'apikey': '${{ secrets.SUPABASE_KEY }}',
-                'Authorization': 'Bearer ${{ secrets.SUPABASE_KEY }}'
-              }}
-            );
-            const rdvs = await res.json();
-            console.log(`Found ${rdvs.length} reservations for tomorrow`);
-            
-            for (const rdv of rdvs) {
-              if (rdv.client_telephone) {
-                let phone = rdv.client_telephone.replace(/\s+/g,'').replace('+','');
-                if (!phone.startsWith('57') && phone.length === 10) phone = '57' + phone;
-                
-                const msg = encodeURIComponent(
-                  `⏰ Recordatorio de cita!\n\n` +
-                  `Mañana tienes cita en ${rdv.salons?.nom || 'el salón'}:\n` +
-                  `💅 Servicio: ${rdv.service}\n` +
-                  `📅 Fecha: ${dateStr}\n` +
-                  `⏰ Hora: ${rdv.heure_rdv?.slice(0,5)}\n\n` +
-                  `Te esperamos! 😊`
-                );
-                
-                await fetch(
-                  `https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${msg}&apikey=${{ secrets.CMB_APIKEY }}`
-                );
-                console.log(`Reminder sent to ${rdv.client_nom}`);
-              }
-            }
-          }
-          
-          sendReminders().catch(console.error);
-          EOF
+Skip to content
+GREG-CREATOR380
+YARESERVA
+Repository navigation
+Code
+Issues
+Pull requests
+Actions
+Projects
+Wiki
+Security and quality
+Insights
+Settings
+Files
+Go to file
+t
+T
+.github/workflows
+main.yml
+YaReserva_Landing.html
+index.html
+logo.png
+manifest.json
+reserva.html
+YARESERVA/.github
+/workflows/
+GREG-CREATOR380
+GREG-CREATOR380
+Create main.yml
+3963435
+ · 
+16 hours ago
+Name	Last commit message	Last commit date
+..
+main.yml
+Create main.yml
+16 hours ago
