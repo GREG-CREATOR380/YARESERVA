@@ -92,9 +92,22 @@
 
 <!-- HEADER -->
 <div class="salon-header">
-  <div class="salon-avatar" id="salon-avatar">💇</div>
+  <div id="salon-logo-container">
+    <div class="salon-avatar" id="salon-avatar">💇</div>
+  </div>
   <div class="salon-name" id="salon-name-display">Cargando...</div>
   <div class="salon-sector" id="salon-sector-display">Reserva tu cita online</div>
+  <div id="salon-info-bar" style="display:none;margin-top:16px;display:flex;gap:20px;justify-content:center;flex-wrap:wrap">
+    <div id="salon-horario" style="color:rgba(255,255,255,0.85);font-size:14px;display:flex;align-items:center;gap:6px">
+      <span>🕐</span><span id="salon-horario-text"></span>
+    </div>
+    <div id="salon-whatsapp-bar" style="color:rgba(255,255,255,0.85);font-size:14px;display:flex;align-items:center;gap:6px">
+      <span>📱</span><span id="salon-wa-text"></span>
+    </div>
+    <div id="salon-direccion-bar" style="color:rgba(255,255,255,0.85);font-size:14px;display:flex;align-items:center;gap:6px">
+      <span>📍</span><span id="salon-dir-text"></span>
+    </div>
+  </div>
 </div>
 
 <!-- STEPS BAR -->
@@ -110,6 +123,7 @@
 
   <!-- STEP 1 — SERVICIO -->
   <div class="step-view active" id="step-1">
+    <div id="salon-description-box" style="display:none;background:#F9FAFB;border-radius:12px;padding:16px;margin-bottom:20px;font-size:14px;color:#6B7280;line-height:1.6" id="salon-desc"></div>
     <div class="step-title">¿Qué servicio deseas?</div>
     <div class="step-sub">Selecciona un servicio para continuar</div>
     <div class="services-grid" id="services-list">
@@ -186,7 +200,10 @@
 
 </div>
 
-<div class="powered">Powered by <span>YaReserva</span> · yareserva.app</div>
+<div class="powered" style="display:flex;align-items:center;justify-content:center;gap:8px">
+  <img src="https://greg-creator380.github.io/YARESERVA/logo.png" alt="YaReserva" style="height:20px;width:auto;object-fit:contain">
+  <span style="color:#D1D5DB;font-size:12px">yareserva.app</span>
+</div>
 
 <script>
 const SUPABASE_URL = 'https://axleatjquybypunogkui.supabase.co';
@@ -254,13 +271,38 @@ async function init() {
       salonData = salon;
       document.getElementById('salon-name-display').textContent = salon.nom;
       document.getElementById('salon-sector-display').textContent = salon.secteur || 'Reserva tu cita online';
+      document.title = `Reservar cita — ${salon.nom}`;
+      
+      // Show emoji or logo
       const emoji = EMOJI_MAP[salon.secteur] || EMOJI_MAP.default;
       document.getElementById('salon-avatar').textContent = emoji;
-      document.title = `Reservar cita — ${salon.nom}`;
-      console.log('Salon loaded! Capacidad:', salon.capacidad);
+      
+      // Show horario
+      if (salon.heure_ouverture && salon.heure_fermeture) {
+        document.getElementById('salon-horario-text').textContent = `${salon.heure_ouverture.slice(0,5)} - ${salon.heure_fermeture.slice(0,5)}`;
+        document.getElementById('salon-horario').style.display = 'flex';
+      }
+      
+      // Show whatsapp
+      if (salon.whatsapp) {
+        document.getElementById('salon-wa-text').textContent = salon.whatsapp;
+        document.getElementById('salon-whatsapp-bar').style.display = 'flex';
+      }
+      
+      // Show direccion
+      if (salon.adresse) {
+        document.getElementById('salon-dir-text').textContent = salon.adresse;
+        document.getElementById('salon-direccion-bar').style.display = 'flex';
+      }
+      
+      // Show info bar if any info available
+      if (salon.heure_ouverture || salon.whatsapp || salon.adresse) {
+        document.getElementById('salon-info-bar').style.display = 'flex';
+      }
+      
+      console.log('Salon loaded!');
     } else {
       document.getElementById('salon-name-display').textContent = 'YaReserva';
-      console.log('Salon not found!');
     }
   } catch(e) {
     console.log('Error loading salon:', e);
@@ -325,18 +367,30 @@ function renderDates() {
   const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const today = new Date();
   today.setHours(0,0,0,0);
-  let html = '';
   
-  for (let i = 0; i < 14; i++) {
+  // Get closed days from salon config
+  let closedDays = [0]; // Sunday closed by default
+  if (salonData && salonData.dias_apertura) {
+    try {
+      const dias = JSON.parse(salonData.dias_apertura);
+      // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+      const dayMap = { dom: 0, lun: 1, mar: 2, mie: 3, jue: 4, vie: 5, sab: 6 };
+      closedDays = [];
+      Object.keys(dayMap).forEach(key => {
+        if (!dias[key]) closedDays.push(dayMap[key]);
+      });
+    } catch(e) {}
+  }
+  
+  let html = '';
+  for (let i = 0; i < 21; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    if (d.getDay() === 0) continue; // Skip Sunday
+    
+    if (closedDays.includes(d.getDay())) continue;
     
     const isToday = i === 0;
-    const isPast = d < today;
     const dateStr = d.toISOString().split('T')[0];
-    
-    if (isPast) continue; // Skip past dates completely
     
     html += `
       <div class="date-btn ${isToday ? 'today' : ''}" onclick="selectDate('${dateStr}', '${d.getDate()} ${months[d.getMonth()]}', this)">
@@ -358,7 +412,23 @@ function selectDate(dateStr, label, el) {
 
 // ===== HOURS =====
 async function renderHours(dateStr) {
-  const hours = ['09:00','09:30','10:00','10:30','11:00','11:30','12:00','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30','18:00'];
+  // Generate hours based on salon config
+  let startHour = 8;
+  let endHour = 20;
+  let slotDuration = 30;
+  
+  if (salonData) {
+    if (salonData.heure_ouverture) startHour = parseInt(salonData.heure_ouverture.split(':')[0]);
+    if (salonData.heure_fermeture) endHour = parseInt(salonData.heure_fermeture.split(':')[0]);
+    if (salonData.duracion_slot) slotDuration = salonData.duracion_slot;
+  }
+  
+  const hours = [];
+  for (let h = startHour; h < endHour; h++) {
+    for (let m = 0; m < 60; m += slotDuration) {
+      hours.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+    }
+  }
   
   // Show loading
   document.getElementById('hours-grid').innerHTML = '<div style="grid-column:span 3;text-align:center;padding:20px;color:#6B7280">Cargando horarios...</div>';
