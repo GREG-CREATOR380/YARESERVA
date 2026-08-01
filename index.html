@@ -916,7 +916,7 @@ async function doLogin() {
   if (!email || !pass) { alert('Por favor complete todos los campos.'); return; }
   
   try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = getSupabase();
     const { data, error } = await client.auth.signInWithPassword({ email, password: pass });
     
     if (error) { alert('Error: ' + error.message); return; }
@@ -947,7 +947,7 @@ async function doRegister() {
   const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   
   try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = getSupabase();
     
     // Create auth user
     const { data: authData, error: authError } = await client.auth.signUp({ email, password: pass });
@@ -1032,7 +1032,7 @@ async function showDash(section) {
   // Load config data from Supabase
   if (section === 'config') {
     try {
-      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const client = getSupabase();
       const { data: { user } } = await client.auth.getUser();
       if (!user) {
         console.log('No user session - not redirecting');
@@ -1085,7 +1085,7 @@ async function saveRdv() {
   }
 
   try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = getSupabase();
     const { data: { user } } = await client.auth.getUser();
 
     if (user) {
@@ -1193,7 +1193,7 @@ async function saveCliente() {
   if(!name || !phone) { alert('Por favor complete nombre y teléfono.'); return; }
 
   try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = getSupabase();
     const { data: { user } } = await client.auth.getUser();
 
     if (user) {
@@ -1268,7 +1268,7 @@ async function saveHorarios() {
   const duracion = document.getElementById('duracion-slot')?.value || '30';
 
   try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = getSupabase();
     const { data: { user } } = await client.auth.getUser();
     if (user) {
       await client.from('salons').update({
@@ -1289,7 +1289,7 @@ async function saveConfig() {
   const capacidad = document.getElementById('config-capacidad')?.value || 1;
   
   try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = getSupabase();
     const { data: { user } } = await client.auth.getUser();
     if (user) {
       await client.from('salons').update({ 
@@ -1312,7 +1312,7 @@ function filterClients(q) {
 // ===== SERVICES =====
 async function loadServices() {
   try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = getSupabase();
     const { data: { user } } = await client.auth.getUser();
     if (!user) return;
     
@@ -1351,7 +1351,7 @@ async function saveService() {
   if (!nom) { alert('Por favor ingresa el nombre del servicio.'); return; }
   
   try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = getSupabase();
     const { data: { user } } = await client.auth.getUser();
     if (!user) return;
     
@@ -1378,7 +1378,7 @@ async function deleteService(id) {
   if (!confirm('¿Eliminar este servicio?')) return;
   
   try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = getSupabase();
     await client.from('services').update({ actif: false }).eq('id', id);
     const el = document.getElementById(`svc-${id}`);
     if (el) el.remove();
@@ -1428,7 +1428,7 @@ async function updateRdv() {
   if (!client || !fecha || !hora) { alert('Por favor complete todos los campos.'); return; }
   
   try {
-    const supaClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supaClient = getSupabase();
     const { error } = await supaClient.from('reservations').update({
       client_nom: client,
       service,
@@ -1458,7 +1458,7 @@ async function deleteRdv(id) {
   if (!confirm('¿Cancelar esta cita?')) return;
   
   try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const client = getSupabase();
     const { error } = await client.from('reservations').delete().eq('id', id);
     
     if (!error) {
@@ -1576,6 +1576,40 @@ function shareFB() {
   // ===== SUPABASE CONFIG =====
   const SUPABASE_URL = 'https://axleatjquybypunogkui.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_9FQEJatmTxpUdRZzWA8xyg_yor0A_EN';
+  
+  // Create single Supabase instance for the whole app
+  let _supabaseClient = null;
+  function getSupabase() {
+    if (!_supabaseClient) {
+      _supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: {
+          persistSession: true,
+          storageKey: 'yareserva-auth',
+          storage: {
+            getItem: (key) => {
+              try { return localStorage.getItem(key); } 
+              catch(e) { 
+                // Fallback to cookies for Safari
+                const match = document.cookie.match(new RegExp('(^| )' + key + '=([^;]+)'));
+                return match ? decodeURIComponent(match[2]) : null;
+              }
+            },
+            setItem: (key, value) => {
+              try { localStorage.setItem(key, value); }
+              catch(e) {
+                document.cookie = `${key}=${encodeURIComponent(value)};path=/;max-age=86400`;
+              }
+            },
+            removeItem: (key) => {
+              try { localStorage.removeItem(key); }
+              catch(e) { document.cookie = `${key}=;path=/;max-age=0`; }
+            }
+          }
+        }
+      });
+    }
+    return _supabaseClient;
+  }
 
   // ===== CALLMEBOT WHATSAPP =====
   const CMB_PHONE = '573146308300';
@@ -1594,7 +1628,7 @@ function shareFB() {
 
   async function loadReservations() {
     try {
-      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const client = getSupabase();
       const { data: { user } } = await client.auth.getUser();
       if (!user) return;
 
@@ -1732,7 +1766,7 @@ function shareFB() {
   async function saveRdvSupabase(clientNom, phone, service, fecha, hora) {
     if (!currentUser || !currentUser.salon_id) return false;
     try {
-      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const client = getSupabase();
       await client.from('reservations').insert([{
         salon_id: currentUser.salon_id,
         client_nom: clientNom,
