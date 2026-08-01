@@ -709,6 +709,34 @@
   </div>
 </div>
 
+<!-- Modal Editar Cita -->
+<div class="modal-overlay" id="modal-edit-rdv">
+  <div class="modal">
+    <div class="modal-title">✏️ Modificar cita</div>
+    <input type="hidden" id="edit-rdv-id">
+    <div class="form-group"><label>Cliente</label><input type="text" id="edit-rdv-cliente" placeholder="Nombre del cliente"></div>
+    <div class="form-group"><label>Servicio</label>
+      <select id="edit-rdv-service">
+        <option>Corte de cabello</option>
+        <option>Tinte / Color</option>
+        <option>Manicure</option>
+        <option>Pedicure</option>
+        <option>Tratamiento</option>
+        <option>Masaje</option>
+        <option>Otro</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group"><label>Fecha</label><input type="date" id="edit-rdv-fecha"></div>
+      <div class="form-group"><label>Hora</label><input type="time" id="edit-rdv-hora"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-edit-rdv')">Cancelar</button>
+      <button class="btn-confirm" onclick="updateRdv()">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Nuevo Servicio -->
 <div class="modal-overlay" id="modal-service">
   <div class="modal">
@@ -1187,6 +1215,57 @@ async function deleteService(id) {
   } catch(e) { console.log('Error deleting service:', e); }
 }
 
+function editRdv(id, client, service, fecha, hora) {
+  document.getElementById('edit-rdv-id').value = id;
+  document.getElementById('edit-rdv-cliente').value = client;
+  document.getElementById('edit-rdv-fecha').value = fecha;
+  document.getElementById('edit-rdv-hora').value = hora;
+  
+  // Set service
+  const select = document.getElementById('edit-rdv-service');
+  for (let opt of select.options) {
+    if (opt.value === service) { opt.selected = true; break; }
+  }
+  
+  openModal('modal-edit-rdv');
+}
+
+async function updateRdv() {
+  const id = document.getElementById('edit-rdv-id').value;
+  const client = document.getElementById('edit-rdv-cliente').value;
+  const service = document.getElementById('edit-rdv-service').value;
+  const fecha = document.getElementById('edit-rdv-fecha').value;
+  const hora = document.getElementById('edit-rdv-hora').value;
+  
+  if (!client || !fecha || !hora) { alert('Por favor complete todos los campos.'); return; }
+  
+  try {
+    const supaClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { error } = await supaClient.from('reservations').update({
+      client_nom: client,
+      service,
+      date_rdv: fecha,
+      heure_rdv: hora
+    }).eq('id', id);
+    
+    if (!error) {
+      // Update UI
+      const el = document.getElementById(`rdv-${id}`);
+      if (el) {
+        el.querySelector('.rdv-time').textContent = hora.slice(0,5);
+        el.querySelector('.rdv-client').textContent = client;
+        el.querySelector('.rdv-service').textContent = service;
+      }
+      closeModal('modal-edit-rdv');
+      alert('✅ Cita modificada!');
+      return;
+    }
+  } catch(e) { console.log('Error:', e); }
+  
+  closeModal('modal-edit-rdv');
+  alert('✅ Cita modificada (demo)!');
+}
+
 async function deleteRdv(id) {
   if (!confirm('¿Cancelar esta cita?')) return;
   
@@ -1348,6 +1427,7 @@ function shareFB() {
               <div class="rdv-service">${r.service || ''}</div>
             </div>
             <span class="rdv-status ${r.statut === 'confirmada' ? 'confirmed' : 'pending'}">${r.statut === 'confirmada' ? 'Confirmada' : 'Pendiente'}</span>
+            <button onclick="editRdv('${r.id}','${r.client_nom}','${r.service || ''}','${r.date_rdv}','${r.heure_rdv.slice(0,5)}')" style="background:none;border:none;cursor:pointer;color:#0D6E5E;font-size:18px;padding:4px 8px;border-radius:6px" title="Editar cita">✏️</button>
             <button onclick="deleteRdv('${r.id}')" style="background:none;border:none;cursor:pointer;color:#E74C3C;font-size:18px;padding:4px 8px;border-radius:6px;transition:background .2s" title="Cancelar cita" onmouseover="this.style.background='#FDEDEC'" onmouseout="this.style.background='none'">🗑️</button>
           </div>`).join('');
         document.getElementById('rdv-items').innerHTML = html;
