@@ -1523,6 +1523,15 @@ function shareFB() {
         }
       }
 
+      // Load services prices for real CA calculation
+      const { data: servicesList } = await client.from('services')
+        .select('nom, prix').eq('salon_id', salon.id).eq('actif', true);
+      
+      const priceMap = {};
+      if (servicesList) {
+        servicesList.forEach(s => { priceMap[s.nom] = s.prix || 0; });
+      }
+
       // Load ALL reservations for stats
       const { data: allRdvs } = await client.from('reservations')
         .select('*').eq('salon_id', salon.id);
@@ -1533,9 +1542,25 @@ function shareFB() {
         startWeek.setDate(startWeek.getDate() - startWeek.getDay());
         const rdvSemaine = allRdvs.filter(r => new Date(r.date_rdv) >= startWeek);
         
-        // Ingresos estimados hoy (25.000 COP par cita en moyenne)
-        const ingresosHoy = (rdvs?.length || 0) * 25000;
+        // CA réel basé sur les vrais prix des services
+        const ingresosHoy = (rdvs || []).reduce((total, r) => {
+          const price = priceMap[r.service] || 0;
+          return total + price;
+        }, 0);
+        
+        const ingresosSemana = rdvSemaine.reduce((total, r) => {
+          const price = priceMap[r.service] || 0;
+          return total + price;
+        }, 0);
+
         document.getElementById('stat-ingresos').textContent = ingresosHoy.toLocaleString();
+        
+        // Update label to show real vs estimated
+        const ingresosLabel = document.querySelector('.stat-card:nth-child(2) .stat-card-label');
+        if (ingresosLabel) ingresosLabel.textContent = '💰 Ingresos hoy (real)';
+        
+        const ingresosSub = document.querySelector('.stat-card:nth-child(2) .stat-card-sub');
+        if (ingresosSub) ingresosSub.textContent = ingresosSemana > 0 ? `Semana: ${ingresosSemana.toLocaleString()} COP` : 'COP';
         
         if (rdvs && rdvs.length > 0) {
           document.getElementById('stat-hoy-sub').textContent = `+${rdvs.length} confirmada(s)`;
