@@ -33,9 +33,11 @@
   .step-title { font-size:20px; font-weight:800; margin-bottom:6px; }
   .step-sub { color:var(--gray); font-size:14px; margin-bottom:24px; }
   .services-grid { display:flex; flex-direction:column; gap:12px; }
-  .service-card { background:#fff; border:2px solid #EFEFEF; border-radius:14px; padding:18px 20px; cursor:pointer; transition:all .2s; display:flex; align-items:center; justify-content:space-between; }
+  .service-card { background:#fff; border:2px solid #EFEFEF; border-radius:14px; padding:16px 20px; cursor:pointer; transition:all .2s; display:flex; align-items:center; justify-content:space-between; position:relative; }
   .service-card:hover { border-color:var(--teal); }
   .service-card.selected { border-color:var(--teal); background:var(--teal-light); }
+  .service-check { width:24px;height:24px;border-radius:50%;border:2px solid #E0E0E0;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s; }
+  .service-card.selected .service-check { background:var(--teal);border-color:var(--teal);color:#fff; }
   .service-name { font-size:16px; font-weight:700; margin-bottom:4px; }
   .service-meta { font-size:13px; color:var(--gray); }
   .service-price { font-size:18px; font-weight:800; color:var(--teal); }
@@ -123,12 +125,26 @@
 
   <!-- STEP 1 — SERVICIO -->
   <div class="step-view active" id="step-1">
-    <div id="salon-description-box" style="display:none;background:#F9FAFB;border-radius:12px;padding:16px;margin-bottom:20px;font-size:14px;color:#6B7280;line-height:1.6" id="salon-desc"></div>
-    <div class="step-title">¿Qué servicio deseas?</div>
-    <div class="step-sub">Selecciona un servicio para continuar</div>
-    <div class="services-grid" id="services-list">
-      <!-- Loaded dynamically or defaults -->
+    <div class="step-title">¿Qué servicios deseas?</div>
+    <div class="step-sub">Puedes seleccionar varios servicios</div>
+    <div class="services-grid" id="services-list"></div>
+    
+    <!-- Cart summary -->
+    <div id="cart-summary" style="display:none;background:#F9FAFB;border-radius:14px;padding:16px;margin-top:16px;border:2px solid #0D6E5E">
+      <div style="font-size:14px;font-weight:700;color:#0D6E5E;margin-bottom:10px">🛒 Tu selección:</div>
+      <div id="cart-items"></div>
+      <div style="border-top:1px solid #E0E0E0;margin-top:10px;padding-top:10px;display:flex;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;color:#6B7280">Duración total</div>
+          <div style="font-size:15px;font-weight:700" id="cart-duracion">0 min</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;color:#6B7280">Total</div>
+          <div style="font-size:18px;font-weight:800;color:#0D6E5E" id="cart-total">0 COP</div>
+        </div>
+      </div>
     </div>
+    
     <button class="btn-next" id="btn-next-1" disabled onclick="goStep(2)">Continuar →</button>
   </div>
 
@@ -156,7 +172,9 @@
     <div class="step-sub">Para confirmar tu cita</div>
 
     <div class="summary-card">
-      <div class="summary-row"><span class="summary-label">Servicio</span><span class="summary-value" id="sum-service">—</span></div>
+      <div class="summary-row"><span class="summary-label">Servicio(s)</span><span class="summary-value" id="sum-service" style="text-align:right;font-size:13px">—</span></div>
+      <div class="summary-row"><span class="summary-label">Duración total</span><span class="summary-value" id="sum-duracion">—</span></div>
+      <div class="summary-row"><span class="summary-label">Precio total</span><span class="summary-value" id="sum-precio" style="color:#0D6E5E">—</span></div>
       <div class="summary-row"><span class="summary-label">Fecha</span><span class="summary-value" id="sum-date">—</span></div>
       <div class="summary-row"><span class="summary-label">Hora</span><span class="summary-value" id="sum-hour">—</span></div>
     </div>
@@ -186,7 +204,8 @@
       <div class="success-sub">Te esperamos. Recibirás un recordatorio por WhatsApp 24h antes de tu cita.</div>
 
       <div class="success-card">
-        <div class="summary-row"><span class="summary-label">Servicio</span><span class="summary-value" id="conf-service">—</span></div>
+        <div class="summary-row"><span class="summary-label">Servicio(s)</span><span class="summary-value" id="conf-service" style="text-align:right;font-size:13px">—</span></div>
+        <div class="summary-row"><span class="summary-label">Total</span><span class="summary-value" id="conf-precio" style="color:#0D6E5E;font-weight:800">—</span></div>
         <div class="summary-row"><span class="summary-label">Fecha</span><span class="summary-value" id="conf-date">—</span></div>
         <div class="summary-row"><span class="summary-label">Hora</span><span class="summary-value" id="conf-hour">—</span></div>
         <div class="summary-row"><span class="summary-label">Nombre</span><span class="summary-value" id="conf-name">—</span></div>
@@ -316,6 +335,9 @@ async function init() {
 // ===== SERVICES =====
 let loadedServices = [];
 
+// Cart management
+let cart = []; // Array of selected services
+
 async function renderServices() {
   const list = document.getElementById('services-list');
   list.innerHTML = '<div style="text-align:center;padding:30px;color:#6B7280">Cargando servicios...</div>';
@@ -328,36 +350,85 @@ async function renderServices() {
       
       if (services && services.length > 0) {
         loadedServices = services;
-        list.innerHTML = services.map((s, i) => `
-          <div class="service-card" onclick="selectService(${i}, this)">
-            <div>
-              <div class="service-name">${s.nom}</div>
-              <div class="service-meta">${s.duree} min</div>
-            </div>
-            ${s.prix > 0 ? `<div class="service-price">${s.prix.toLocaleString()} COP</div>` : '<div class="service-price" style="font-size:13px;color:#6B7280">A consultar</div>'}
-          </div>`).join('');
+        renderServiceCards(services);
         return;
       }
     }
   } catch(e) { console.log('Using default services'); }
   
-  // Fallback to defaults
   loadedServices = SERVICES_DEFAULT.map(s => ({ nom: s.nom, duree: s.duracion, prix: s.precio }));
-  list.innerHTML = SERVICES_DEFAULT.map((s, i) => `
-    <div class="service-card" onclick="selectService(${i}, this)">
-      <div>
+  renderServiceCards(loadedServices);
+}
+
+function renderServiceCards(services) {
+  const list = document.getElementById('services-list');
+  list.innerHTML = services.map((s, i) => `
+    <div class="service-card" id="svc-card-${i}" onclick="toggleService(${i})">
+      <div style="flex:1">
         <div class="service-name">${s.nom}</div>
-        <div class="service-meta">${s.duracion} min</div>
+        <div class="service-meta">${s.duree || s.duracion} min${s.prix > 0 ? ' · ' + s.prix.toLocaleString() + ' COP' : ''}</div>
       </div>
-      <div class="service-price">${s.precio.toLocaleString()} COP</div>
+      <div class="service-check" id="svc-check-${i}">✓</div>
     </div>`).join('');
 }
 
-function selectService(i, el) {
-  document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
-  selected.service = loadedServices[i];
-  document.getElementById('btn-next-1').disabled = false;
+function toggleService(i) {
+  const svc = loadedServices[i];
+  const card = document.getElementById(`svc-card-${i}`);
+  const check = document.getElementById(`svc-check-${i}`);
+  
+  const existingIdx = cart.findIndex(s => s.nom === svc.nom);
+  
+  if (existingIdx >= 0) {
+    // Remove from cart
+    cart.splice(existingIdx, 1);
+    card.classList.remove('selected');
+  } else {
+    // Add to cart
+    cart.push({ ...svc, duree: svc.duree || svc.duracion });
+    card.classList.add('selected');
+  }
+  
+  updateCart();
+}
+
+function updateCart() {
+  const summary = document.getElementById('cart-summary');
+  const btn = document.getElementById('btn-next-1');
+  
+  if (cart.length === 0) {
+    summary.style.display = 'none';
+    btn.disabled = true;
+    selected.service = null;
+    return;
+  }
+  
+  // Calculate totals
+  const totalDuree = cart.reduce((sum, s) => sum + parseInt(s.duree || 0), 0);
+  const totalPrix = cart.reduce((sum, s) => sum + parseInt(s.prix || 0), 0);
+  
+  // Update summary
+  document.getElementById('cart-duracion').textContent = totalDuree >= 60 
+    ? `${Math.floor(totalDuree/60)}h ${totalDuree%60 > 0 ? totalDuree%60 + 'min' : ''}`
+    : `${totalDuree} min`;
+  document.getElementById('cart-total').textContent = totalPrix > 0 ? totalPrix.toLocaleString() + ' COP' : 'A consultar';
+  
+  document.getElementById('cart-items').innerHTML = cart.map(s => 
+    `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+      <span>✓ ${s.nom}</span>
+      <span style="color:#6B7280">${s.duree}min${s.prix > 0 ? ' · ' + s.prix.toLocaleString() : ''}</span>
+    </div>`
+  ).join('');
+  
+  summary.style.display = 'block';
+  btn.disabled = false;
+  
+  // Set combined service for booking
+  selected.service = {
+    nom: cart.map(s => s.nom).join(' + '),
+    duree: totalDuree,
+    prix: totalPrix
+  };
 }
 
 // ===== DATES =====
@@ -485,6 +556,12 @@ function goStep(n) {
   
   if (n === 4) {
     document.getElementById('sum-service').textContent = selected.service?.nom || '—';
+    const duree = selected.service?.duree || 0;
+    document.getElementById('sum-duracion').textContent = duree >= 60 
+      ? `${Math.floor(duree/60)}h ${duree%60 > 0 ? duree%60 + 'min' : ''}`
+      : `${duree} min`;
+    const prix = selected.service?.prix || 0;
+    document.getElementById('sum-precio').textContent = prix > 0 ? prix.toLocaleString() + ' COP' : 'A consultar';
     document.getElementById('sum-date').textContent = selected.dateLabel || '—';
     document.getElementById('sum-hour').textContent = selected.hour || '—';
   }
@@ -530,6 +607,8 @@ async function confirmarCita() {
 
   // Show success
   document.getElementById('conf-service').textContent = selected.service?.nom || '—';
+  const totalPrix = selected.service?.prix || 0;
+  document.getElementById('conf-precio').textContent = totalPrix > 0 ? totalPrix.toLocaleString() + ' COP' : 'A consultar';
   document.getElementById('conf-date').textContent = selected.dateLabel || '—';
   document.getElementById('conf-hour').textContent = selected.hour || '—';
   document.getElementById('conf-name').textContent = name;
