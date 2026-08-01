@@ -1215,27 +1215,32 @@ async function deleteService(id) {
   } catch(e) { console.log('Error deleting service:', e); }
 }
 
-function editRdvFromEl(btn) {
-  const el = btn.closest('.rdv-item');
-  const id = el.dataset.id;
-  const client = el.dataset.client;
-  const service = el.dataset.service;
-  const fecha = el.dataset.fecha;
-  const hora = el.dataset.hora;
-  editRdv(id, client, service, fecha, hora);
-}
-
-function editRdv(id, client, service, fecha, hora) {
-  document.getElementById('edit-rdv-id').value = id;
-  document.getElementById('edit-rdv-cliente').value = client;
-  document.getElementById('edit-rdv-fecha').value = fecha;
-  document.getElementById('edit-rdv-hora').value = hora;
+function editRdv(id) {
+  console.log('editRdv called with id:', id);
+  console.log('rdvData:', window.rdvData);
   
-  // Set service
+  const data = window.rdvData && window.rdvData[id];
+  if (!data) { 
+    console.error('No data found for id:', id);
+    alert('Error: recarga la página e intenta de nuevo.');
+    return; 
+  }
+  
+  console.log('Found data:', data);
+  
+  document.getElementById('edit-rdv-id').value = id;
+  document.getElementById('edit-rdv-cliente').value = data.client || '';
+  document.getElementById('edit-rdv-fecha').value = data.fecha || '';
+  document.getElementById('edit-rdv-hora').value = data.hora || '';
+  
+  // Set service in select
   const select = document.getElementById('edit-rdv-service');
-  for (let opt of select.options) {
-    if (opt.value === service || opt.text === service) { 
-      opt.selected = true; break; 
+  if (select && data.service) {
+    for (let i = 0; i < select.options.length; i++) {
+      if (select.options[i].value === data.service || select.options[i].text === data.service) {
+        select.selectedIndex = i;
+        break;
+      }
     }
   }
   
@@ -1431,23 +1436,32 @@ function shareFB() {
         .eq('date_rdv', today).order('heure_rdv');
 
       if (rdvs && rdvs.length > 0) {
-        const html = rdvs.map(r => `
-          <div class="rdv-item" id="rdv-${r.id}" 
-            data-id="${r.id}" 
-            data-client="${r.client_nom.replace(/"/g,'&quot;')}" 
-            data-service="${(r.service||'').replace(/"/g,'&quot;')}" 
-            data-fecha="${r.date_rdv}" 
-            data-hora="${r.heure_rdv.slice(0,5)}">
-            <div class="rdv-time">${r.heure_rdv.slice(0,5)}</div>
+        // Store RDV data globally
+        window.rdvData = {};
+        rdvs.forEach(r => {
+          window.rdvData[r.id] = {
+            id: r.id,
+            client: r.client_nom,
+            service: r.service || '',
+            fecha: r.date_rdv,
+            hora: r.heure_rdv ? r.heure_rdv.slice(0,5) : '10:00'
+          };
+        });
+
+        const rdvHtml = rdvs.map(r => {
+          const safeId = r.id;
+          return `<div class="rdv-item" id="rdv-${safeId}">
+            <div class="rdv-time">${r.heure_rdv ? r.heure_rdv.slice(0,5) : '--:--'}</div>
             <div class="rdv-info">
               <div class="rdv-client">${r.client_nom}</div>
               <div class="rdv-service">${r.service || ''}</div>
             </div>
             <span class="rdv-status ${r.statut === 'confirmada' ? 'confirmed' : 'pending'}">${r.statut === 'confirmada' ? 'Confirmada' : 'Pendiente'}</span>
-            <button onclick="editRdvFromEl(this)" style="background:none;border:none;cursor:pointer;color:#0D6E5E;font-size:18px;padding:4px 8px;border-radius:6px" title="Editar cita">✏️</button>
-            <button onclick="deleteRdv('${r.id}')" style="background:none;border:none;cursor:pointer;color:#E74C3C;font-size:18px;padding:4px 8px;border-radius:6px;transition:background .2s" title="Cancelar cita" onmouseover="this.style.background='#FDEDEC'" onmouseout="this.style.background='none'">🗑️</button>
-          </div>`).join('');
-        document.getElementById('rdv-items').innerHTML = html;
+            <button onclick="editRdv('${safeId}')" style="background:none;border:none;cursor:pointer;color:#0D6E5E;font-size:18px;padding:4px 8px;border-radius:6px" title="Editar">✏️</button>
+            <button onclick="deleteRdv('${safeId}')" style="background:none;border:none;cursor:pointer;color:#E74C3C;font-size:18px;padding:4px 8px;border-radius:6px" title="Cancelar">🗑️</button>
+          </div>`;
+        }).join('');
+        document.getElementById('rdv-items').innerHTML = rdvHtml;
         document.getElementById('stat-hoy').textContent = rdvs.length;
       }
 
