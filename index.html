@@ -459,6 +459,7 @@
       <button class="nav-item active" id="nav-agenda" onclick="showDash('agenda')"><span class="nav-icon">📅</span>Agenda</button>
       <button class="nav-item" id="nav-clientes" onclick="showDash('clientes')"><span class="nav-icon">👥</span>Clientes</button>
       <button class="nav-item" id="nav-qr" onclick="showDash('qr')"><span class="nav-icon">🔲</span>QR & Enlace</button>
+      <button class="nav-item" id="nav-historial" onclick="showDash('historial')"><span class="nav-icon">📋</span>Historial</button>
       <button class="nav-item" id="nav-stats" onclick="showDash('stats')"><span class="nav-icon">📊</span>Estadísticas</button>
       <button class="nav-item" id="nav-config" onclick="showDash('config')"><span class="nav-icon">⚙️</span>Configuración</button>
       <div style="position:absolute;bottom:24px;left:0;right:0;padding:0 24px">
@@ -555,8 +556,9 @@
               <h2 style="font-size:20px;font-weight:800;margin-bottom:4px">Mis clientes</h2>
               <p style="color:#6B7280;font-size:14px" id="clients-count">0 clientes registrados</p>
             </div>
-            <div style="display:flex;gap:12px;align-items:center">
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
               <input type="text" class="search-bar" placeholder="Buscar cliente..." onkeyup="filterClients(this.value)">
+              <button onclick="relanzarInactivos()" style="background:#E74C3C;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer">🔴 Relanzar inactivos</button>
               <button class="btn-orange" onclick="openModal('modal-cliente')">+ Nuevo cliente</button>
             </div>
           </div>
@@ -601,6 +603,36 @@
                   <button onclick="shareIG()" style="padding:12px;font-size:14px;border-radius:10px;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">📸 Compartir en Instagram</button>
                   <button onclick="shareFB()" style="padding:12px;font-size:14px;border-radius:10px;background:#1877F2;color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:600">📘 Compartir en Facebook</button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- HISTORIAL -->
+        <div id="dash-historial" style="display:none">
+          <div class="clients-header">
+            <div>
+              <h2 style="font-size:20px;font-weight:800;margin-bottom:4px">Historial de citas</h2>
+              <p style="color:#6B7280;font-size:14px" id="historial-count">Cargando...</p>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center">
+              <input type="month" id="historial-mes" style="padding:10px 16px;border:1px solid #E0E0E0;border-radius:10px;font-size:14px;outline:none;font-family:inherit" onchange="filterHistorial()">
+              <input type="text" class="search-bar" placeholder="Buscar cliente..." onkeyup="filterHistorial()" id="historial-search">
+            </div>
+          </div>
+
+          <div style="background:#fff;border-radius:16px;border:1px solid #EFEFEF;overflow:hidden">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 120px;gap:16px;padding:16px 24px;background:#F9FAFB;border-bottom:1px solid #EFEFEF;font-size:13px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.5px">
+              <div>Cliente</div>
+              <div>Servicio</div>
+              <div>Fecha</div>
+              <div>Hora</div>
+              <div>Estado</div>
+            </div>
+            <div id="historial-list">
+              <div style="text-align:center;padding:60px 24px;color:#6B7280">
+                <div style="font-size:40px;margin-bottom:12px">📋</div>
+                <div style="font-size:16px;font-weight:600">Cargando historial...</div>
               </div>
             </div>
           </div>
@@ -1004,14 +1036,19 @@ function selectDay(d) {
 }
 
 async function showDash(section) {
-  ['agenda','clientes','qr','stats','config'].forEach(s => {
+  ['agenda','clientes','qr','historial','stats','config'].forEach(s => {
     document.getElementById(`dash-${s}`).style.display = s === section ? 'block' : 'none';
     const nav = document.getElementById(`nav-${s}`);
     if(nav) nav.classList.toggle('active', s === section);
   });
-  const titles = { agenda:'Agenda', clientes:'Clientes', qr:'QR & Enlace', stats:'Estadísticas', config:'Configuración' };
+  const titles = { agenda:'Agenda', clientes:'Clientes', qr:'QR & Enlace', historial:'Historial', stats:'Estadísticas', config:'Configuración' };
   document.getElementById('dash-title').textContent = titles[section];
   
+  // Load historial when section opens
+  if (section === 'historial') {
+    loadHistorial();
+  }
+
   // Generate QR when QR section opens
   if (section === 'qr') {
     setTimeout(() => {
@@ -1301,6 +1338,150 @@ function filterClients(q) {
   });
 }
 
+async function relanzarInactivos() {
+  try {
+    const client = getSupabase();
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return;
+    
+    const { data: salon } = await client.from('salons').select('*').eq('email', user.email).single();
+    if (!salon) return;
+
+    // Get clients inactive for 30+ days
+    const hace30 = new Date();
+    hace30.setDate(hace30.getDate() - 30);
+    const hace30Str = hace30.toISOString().split('T')[0];
+
+    const { data: clients } = await client.from('clients')
+      .select('*')
+      .eq('salon_id', salon.id)
+      .or(`derniere_visite.lt.${hace30Str},derniere_visite.is.null`);
+
+    if (!clients || clients.length === 0) {
+      alert('✅ No hay clientes inactivos!');
+      return;
+    }
+
+    if (!confirm(`¿Enviar WhatsApp a ${clients.length} cliente(s) inactivo(s)?`)) return;
+
+    let sent = 0;
+    for (const c of clients) {
+      if (c.telephone) {
+        let phone = c.telephone.replace(/\s+/g,'').replace('+','');
+        if (!phone.startsWith('57') && phone.length === 10) phone = '57' + phone;
+        
+        const msg = encodeURIComponent(
+          `Hola ${c.nom}! 👋\n\n` +
+          `Te echamos de menos en ${salon.nom}! 😊\n\n` +
+          `¿Cuándo vienes a verte con nosotros?\n` +
+          `Reserva tu cita aquí: https://greg-creator380.github.io/YARESERVA/reserva.html?salon=${salon.slug}\n\n` +
+          `¡Te esperamos! 💅`
+        );
+        
+        await fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${msg}&apikey=4681566`, { mode: 'no-cors' });
+        sent++;
+        
+        // Wait 2 seconds between messages to avoid spam
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    
+    alert(`✅ WhatsApp enviado a ${sent} cliente(s) inactivo(s)!`);
+  } catch(e) {
+    console.log('Error relanzando:', e);
+    alert('Error enviando mensajes');
+  }
+}
+
+// ===== HISTORIAL =====
+let allHistorial = [];
+
+async function loadHistorial() {
+  document.getElementById('historial-list').innerHTML = '<div style="text-align:center;padding:40px;color:#6B7280">Cargando...</div>';
+  
+  try {
+    const client = getSupabase();
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return;
+    
+    const { data: salon } = await client.from('salons').select('id').eq('email', user.email).single();
+    if (!salon) return;
+
+    const { data: rdvs } = await client.from('reservations')
+      .select('*')
+      .eq('salon_id', salon.id)
+      .order('date_rdv', { ascending: false })
+      .order('heure_rdv', { ascending: false });
+
+    if (rdvs) {
+      allHistorial = rdvs;
+      document.getElementById('historial-count').textContent = `${rdvs.length} citas en total`;
+      renderHistorial(rdvs);
+    }
+  } catch(e) { 
+    console.log('Error loading historial:', e);
+    document.getElementById('historial-list').innerHTML = '<div style="text-align:center;padding:40px;color:#6B7280">Error cargando historial</div>';
+  }
+}
+
+function renderHistorial(rdvs) {
+  if (!rdvs || rdvs.length === 0) {
+    document.getElementById('historial-list').innerHTML = `
+      <div style="text-align:center;padding:60px 24px;color:#6B7280">
+        <div style="font-size:40px;margin-bottom:12px">📋</div>
+        <div style="font-size:16px;font-weight:600">No hay citas en el historial</div>
+      </div>`;
+    return;
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  
+  const rows = rdvs.map(r => {
+    const isPast = r.date_rdv < today;
+    const isFuture = r.date_rdv > today;
+    const isToday = r.date_rdv === today;
+    
+    let statusColor = '#E6F4F1';
+    let statusText = 'Confirmada';
+    let textColor = '#0D6E5E';
+    
+    if (isPast) { statusColor = '#F3F4F6'; statusText = 'Completada'; textColor = '#6B7280'; }
+    if (isToday) { statusColor = '#FFF3E0'; statusText = 'Hoy'; textColor = '#E65100'; }
+    if (r.statut === 'cancelada') { statusColor = '#FDEDEC'; statusText = 'Cancelada'; textColor = '#C0392B'; }
+    
+    return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 120px;gap:16px;padding:16px 24px;border-bottom:1px solid #F3F4F6;align-items:center" class="historial-row" data-client="${r.client_nom}" data-fecha="${r.date_rdv}">
+      <div style="font-weight:600">${r.client_nom}</div>
+      <div style="color:#6B7280;font-size:14px">${r.service || '—'}</div>
+      <div style="font-size:14px">${formatDate(r.date_rdv)}</div>
+      <div style="font-size:14px">${r.heure_rdv ? r.heure_rdv.slice(0,5) : '—'}</div>
+      <div><span style="background:${statusColor};color:${textColor};padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">${statusText}</span></div>
+    </div>`;
+  }).join('');
+  
+  document.getElementById('historial-list').innerHTML = rows;
+  document.getElementById('historial-count').textContent = `${rdvs.length} citas encontradas`;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const d = new Date(dateStr + 'T00:00:00');
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function filterHistorial() {
+  const search = document.getElementById('historial-search')?.value?.toLowerCase() || '';
+  const mes = document.getElementById('historial-mes')?.value || '';
+  
+  const filtered = allHistorial.filter(r => {
+    const matchSearch = !search || r.client_nom?.toLowerCase().includes(search) || r.service?.toLowerCase().includes(search);
+    const matchMes = !mes || r.date_rdv?.startsWith(mes);
+    return matchSearch && matchMes;
+  });
+  
+  renderHistorial(filtered);
+}
+
 // ===== SERVICES =====
 async function loadServices() {
   try {
@@ -1456,15 +1637,16 @@ async function deleteRdv(id) {
     if (!error) {
       // Remove from UI
       const el = document.getElementById(`rdv-${id}`);
+      const clientNom = el ? el.querySelector('.rdv-client')?.textContent : '';
+      const service = el ? el.querySelector('.rdv-service')?.textContent : '';
+      
       if (el) {
         el.style.transition = 'opacity 0.3s';
         el.style.opacity = '0';
         setTimeout(() => {
           el.remove();
-          // Update stats
           const stat = document.getElementById('stat-hoy');
           if (stat) stat.textContent = Math.max(0, parseInt(stat.textContent) - 1);
-          // Show empty state if no more rdvs
           const rdvItems = document.getElementById('rdv-items');
           if (rdvItems && rdvItems.children.length === 0) {
             rdvItems.innerHTML = `<div style="text-align:center;padding:40px 24px;color:#6B7280">
@@ -1475,6 +1657,15 @@ async function deleteRdv(id) {
           }
         }, 300);
       }
+      
+      // WhatsApp confirmation d'annulation au salon
+      const salonNom = document.getElementById('salon-name-display').textContent;
+      const msgCancel = `🗑️ Cita cancelada en ${salonNom}
+
+👤 Cliente: ${clientNom}
+💅 Servicio: ${service}`;
+      sendWhatsApp(msgCancel);
+      
       alert('✅ Cita cancelada!');
     }
   } catch(e) {
