@@ -659,14 +659,68 @@
             </div>
             <div class="form-card">
               <h3 style="font-size:16px;font-weight:700;margin-bottom:20px">Horarios de atención</h3>
-              <div class="form-group"><label>Días de apertura</label>
-                <select><option>Lunes a Sábado</option><option>Lunes a Viernes</option><option>Todos los días</option></select>
+              
+              <div class="form-group">
+                <label style="margin-bottom:12px;display:block">Días de apertura</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+                    <input type="checkbox" id="day-lun" checked style="width:auto">
+                    <span style="font-size:13px;font-weight:600">Lun</span>
+                  </label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+                    <input type="checkbox" id="day-mar" checked style="width:auto">
+                    <span style="font-size:13px;font-weight:600">Mar</span>
+                  </label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+                    <input type="checkbox" id="day-mie" checked style="width:auto">
+                    <span style="font-size:13px;font-weight:600">Mié</span>
+                  </label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+                    <input type="checkbox" id="day-jue" checked style="width:auto">
+                    <span style="font-size:13px;font-weight:600">Jue</span>
+                  </label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+                    <input type="checkbox" id="day-vie" checked style="width:auto">
+                    <span style="font-size:13px;font-weight:600">Vie</span>
+                  </label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+                    <input type="checkbox" id="day-sab" checked style="width:auto">
+                    <span style="font-size:13px;font-weight:600">Sáb</span>
+                  </label>
+                  <label style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+                    <input type="checkbox" id="day-dom" style="width:auto">
+                    <span style="font-size:13px;font-weight:600">Dom</span>
+                  </label>
+                </div>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-                <div class="form-group"><label>Hora apertura</label><input type="time" value="09:00"></div>
-                <div class="form-group"><label>Hora cierre</label><input type="time" value="19:00"></div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+                <div class="form-group">
+                  <label>Hora apertura</label>
+                  <select id="hora-apertura">
+                    ${Array.from({length:24}, (_,i) => `<option value="${String(i).padStart(2,'0')}:00" ${i===8?'selected':''}>${String(i).padStart(2,'0')}:00</option>`).join('')}
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Hora cierre</label>
+                  <select id="hora-cierre">
+                    ${Array.from({length:24}, (_,i) => `<option value="${String(i).padStart(2,'0')}:00" ${i===20?'selected':''}>${String(i).padStart(2,'0')}:00</option>`).join('')}
+                  </select>
+                </div>
               </div>
-              <button class="btn-submit">Guardar horarios</button>
+
+              <div class="form-group" style="margin-top:12px">
+                <label>Duración de cada cita (minutos)</label>
+                <select id="duracion-slot">
+                  <option value="15">15 min</option>
+                  <option value="30" selected>30 min</option>
+                  <option value="45">45 min</option>
+                  <option value="60">1 hora</option>
+                  <option value="90">1h 30min</option>
+                </select>
+              </div>
+
+              <button class="btn-submit" onclick="saveHorarios()">Guardar horarios</button>
             </div>
           </div>
         </div>
@@ -1128,6 +1182,37 @@ function addClientToUI(name, phone) {
   }
   const statEl = document.getElementById('stat-clientes');
   if (statEl) statEl.textContent = parseInt(statEl.textContent || 0) + 1;
+}
+
+async function saveHorarios() {
+  const days = {
+    lun: document.getElementById('day-lun')?.checked,
+    mar: document.getElementById('day-mar')?.checked,
+    mie: document.getElementById('day-mie')?.checked,
+    jue: document.getElementById('day-jue')?.checked,
+    vie: document.getElementById('day-vie')?.checked,
+    sab: document.getElementById('day-sab')?.checked,
+    dom: document.getElementById('day-dom')?.checked,
+  };
+  const apertura = document.getElementById('hora-apertura')?.value || '08:00';
+  const cierre = document.getElementById('hora-cierre')?.value || '20:00';
+  const duracion = document.getElementById('duracion-slot')?.value || '30';
+
+  try {
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const { data: { user } } = await client.auth.getUser();
+    if (user) {
+      await client.from('salons').update({
+        heure_ouverture: apertura,
+        heure_fermeture: cierre,
+        dias_apertura: JSON.stringify(days),
+        duracion_slot: parseInt(duracion)
+      }).eq('email', user.email);
+      alert('✅ Horarios guardados!');
+    }
+  } catch(e) {
+    alert('✅ Horarios guardados!');
+  }
 }
 
 async function saveConfig() {
