@@ -1,37 +1,89 @@
-Skip to content
-GREG-CREATOR380
-YARESERVA
-Repository navigation
-Code
-Issues
-Pull requests
-Actions
-Projects
-Wiki
-Security and quality
-Insights
-Settings
-Files
-Go to file
-t
-T
-.github/workflows
-main.yml
-YaReserva_Landing.html
-index.html
-logo.png
-manifest.json
-reserva.html
-YARESERVA/.github
-/workflows/
-GREG-CREATOR380
-GREG-CREATOR380
-Create main.yml
-3963435
- · 
-16 hours ago
-Name	Last commit message	Last commit date
-..
-main.yml
-Create main.yml
-16 hours ago
+name: YaReserva Automatisations
+
+on:
+  schedule:
+    - cron: '0 * * * *'      # Rappels 24h - toutes les heures
+    - cron: '0 8 * * 1'      # Relance inactifs - lundi 8h matin
+  workflow_dispatch:
+
+jobs:
+  rappels-24h:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Envoyer rappels 24h avant
+        run: |
+          node << 'EOF'
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const dateStr = tomorrow.toISOString().split('T')[0];
+          
+          async function run() {
+            const res = await fetch(
+              `${{ secrets.SUPABASE_URL }}/rest/v1/reservations?date_rdv=eq.${dateStr}&statut=eq.confirmada&select=*,salons(nom,whatsapp)`,
+              { headers: {
+                'apikey': '${{ secrets.SUPABASE_KEY }}',
+                'Authorization': 'Bearer ${{ secrets.SUPABASE_KEY }}'
+              }}
+            );
+            const rdvs = await res.json();
+            console.log(`Rappels: ${rdvs.length} citas demain`);
+            
+            for (const rdv of rdvs) {
+              if (rdv.client_telephone) {
+                let phone = rdv.client_telephone.replace(/\s+/g,'').replace('+','');
+                if (!phone.startsWith('57') && phone.length === 10) phone = '57' + phone;
+                const msg = encodeURIComponent(`⏰ Recordatorio!\n\nMañana tienes cita en ${rdv.salons?.nom}:\n💅 ${rdv.service}\n⏰ ${rdv.heure_rdv?.slice(0,5)}\n\n¡Te esperamos! 😊`);
+                await fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${msg}&apikey=${{ secrets.CMB_APIKEY }}`);
+                console.log(`Rappel envoyé à ${rdv.client_nom}`);
+              }
+            }
+          }
+          run().catch(console.error);
+          EOF
+
+  relance-inactifs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Relancer clients inactifs
+        run: |
+          node << 'EOF'
+          const hace30 = new Date();
+          hace30.setDate(hace30.getDate() - 30);
+          const hace30Str = hace30.toISOString().split('T')[0];
+          
+          async function run() {
+            // Get all salons
+            const resS = await fetch(
+              `${{ secrets.SUPABASE_URL }}/rest/v1/salons?select=id,nom,slug`,
+              { headers: {
+                'apikey': '${{ secrets.SUPABASE_KEY }}',
+                'Authorization': 'Bearer ${{ secrets.SUPABASE_KEY }}'
+              }}
+            );
+            const salons = await resS.json();
+            
+            for (const salon of salons) {
+              // Get inactive clients
+              const resC = await fetch(
+                `${{ secrets.SUPABASE_URL }}/rest/v1/clients?salon_id=eq.${salon.id}&derniere_visite=lt.${hace30Str}&select=*`,
+                { headers: {
+                  'apikey': '${{ secrets.SUPABASE_KEY }}',
+                  'Authorization': 'Bearer ${{ secrets.SUPABASE_KEY }}'
+                }}
+              );
+              const clients = await resC.json();
+              console.log(`${salon.nom}: ${clients.length} clientes inactivos`);
+              
+              for (const c of clients) {
+                if (c.telephone) {
+                  let phone = c.telephone.replace(/\s+/g,'').replace('+','');
+                  if (!phone.startsWith('57') && phone.length === 10) phone = '57' + phone;
+                  const msg = encodeURIComponent(`Hola ${c.nom}! 👋\n\nTe echamos de menos en ${salon.nom}! 😊\n\n¿Cuándo vienes?\nReserva aquí: https://greg-creator380.github.io/YARESERVA/reserva.html?salon=${salon.slug}\n\n¡Te esperamos! 💅`);
+                  await fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${msg}&apikey=${{ secrets.CMB_APIKEY }}`);
+                  await new Promise(r => setTimeout(r, 2000));
+                }
+              }
+            }
+          }
+          run().catch(console.error);
+          EOF
