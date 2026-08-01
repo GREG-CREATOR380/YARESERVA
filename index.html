@@ -199,6 +199,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="YaReserva">
 <meta name="theme-color" content="#0D6E5E">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -640,17 +641,54 @@
 
         <!-- STATS -->
         <div id="dash-stats" style="display:none">
-          <h2 style="font-size:20px;font-weight:800;margin-bottom:24px">Estadísticas</h2>
-          <div class="stats-grid">
-            <div class="stat-card"><div class="stat-card-label">Citas este mes</div><div class="stat-card-value">142</div><div class="stat-card-sub">+18% vs mes anterior</div></div>
-            <div class="stat-card"><div class="stat-card-label">Nuevos clientes</div><div class="stat-card-value">23</div><div class="stat-card-sub">+5 vs mes anterior</div></div>
-            <div class="stat-card"><div class="stat-card-label">Tasa de no-show</div><div class="stat-card-value">2%</div><div class="stat-card-sub">Gracias a recordatorios</div></div>
-            <div class="stat-card"><div class="stat-card-label">Reservas online</div><div class="stat-card-value">78%</div><div class="stat-card-sub">vs 22% presencial</div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+            <h2 style="font-size:20px;font-weight:800">Estadísticas</h2>
+            <div style="display:flex;gap:8px">
+              <button onclick="setStatPeriod('semana')" id="btn-semana" style="padding:8px 16px;border-radius:8px;border:2px solid #0D6E5E;background:#0D6E5E;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Esta semana</button>
+              <button onclick="setStatPeriod('mes')" id="btn-mes" style="padding:8px 16px;border-radius:8px;border:2px solid #E0E0E0;background:#fff;color:#6B7280;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Este mes</button>
+              <button onclick="setStatPeriod('año')" id="btn-año" style="padding:8px 16px;border-radius:8px;border:2px solid #E0E0E0;background:#fff;color:#6B7280;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Este año</button>
+            </div>
           </div>
-          <div style="background:#fff;border-radius:16px;border:1px solid #EFEFEF;padding:32px;margin-top:8px;text-align:center">
-            <div style="font-size:40px;margin-bottom:16px">📈</div>
-            <div style="font-size:18px;font-weight:700;margin-bottom:8px">Gráficas detalladas próximamente</div>
-            <div style="color:#6B7280;font-size:14px">Seguimiento de ingresos, servicios más populares y análisis de clientes.</div>
+
+          <!-- KPI Cards -->
+          <div class="stats-grid" style="margin-bottom:24px">
+            <div class="stat-card"><div class="stat-card-label">💰 Ingresos</div><div class="stat-card-value" id="adv-ingresos">0</div><div class="stat-card-sub">COP en el período</div></div>
+            <div class="stat-card"><div class="stat-card-label">📅 Citas</div><div class="stat-card-value" id="adv-citas">0</div><div class="stat-card-sub" id="adv-citas-sub">en el período</div></div>
+            <div class="stat-card"><div class="stat-card-label">👥 Clientes únicos</div><div class="stat-card-value" id="adv-clientes-unicos">0</div><div class="stat-card-sub">diferentes clientes</div></div>
+            <div class="stat-card"><div class="stat-card-label">⭐ Ticket promedio</div><div class="stat-card-value" id="adv-ticket">0</div><div class="stat-card-sub">COP por cita</div></div>
+          </div>
+
+          <!-- Charts Grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+            
+            <!-- CA Chart -->
+            <div style="background:#fff;border-radius:16px;border:1px solid #EFEFEF;padding:24px">
+              <div style="font-size:16px;font-weight:700;margin-bottom:16px">📈 Ingresos por día</div>
+              <canvas id="chart-ca" height="200"></canvas>
+            </div>
+
+            <!-- Services Chart -->
+            <div style="background:#fff;border-radius:16px;border:1px solid #EFEFEF;padding:24px">
+              <div style="font-size:16px;font-weight:700;margin-bottom:16px">💅 Servicios más pedidos</div>
+              <canvas id="chart-services" height="200"></canvas>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+            
+            <!-- Hours Chart -->
+            <div style="background:#fff;border-radius:16px;border:1px solid #EFEFEF;padding:24px">
+              <div style="font-size:16px;font-weight:700;margin-bottom:16px">⏰ Horas de mayor demanda</div>
+              <canvas id="chart-hours" height="200"></canvas>
+            </div>
+
+            <!-- Top Clients -->
+            <div style="background:#fff;border-radius:16px;border:1px solid #EFEFEF;padding:24px">
+              <div style="font-size:16px;font-weight:700;margin-bottom:16px">⭐ Clientes más frecuentes</div>
+              <div id="top-clients-list">
+                <div style="text-align:center;padding:20px;color:#6B7280">Cargando...</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1048,6 +1086,11 @@ async function showDash(section) {
   if (section === 'historial') {
     loadHistorial();
   }
+  
+  // Load stats when section opens
+  if (section === 'stats') {
+    loadAdvancedStats('semana');
+  }
 
   // Generate QR when QR section opens
   if (section === 'qr') {
@@ -1393,6 +1436,192 @@ async function relanzarInactivos() {
   }
 }
 
+// ===== ADVANCED STATS =====
+let currentPeriod = 'semana';
+let statsCharts = {};
+
+function setStatPeriod(period) {
+  currentPeriod = period;
+  
+  // Update buttons
+  ['semana','mes','año'].forEach(p => {
+    const btn = document.getElementById(`btn-${p}`);
+    if (btn) {
+      btn.style.background = p === period ? '#0D6E5E' : '#fff';
+      btn.style.color = p === period ? '#fff' : '#6B7280';
+      btn.style.borderColor = p === period ? '#0D6E5E' : '#E0E0E0';
+    }
+  });
+  
+  loadAdvancedStats(period);
+}
+
+function getPeriodDates(period) {
+  const today = new Date();
+  let start = new Date();
+  
+  if (period === 'semana') {
+    start.setDate(today.getDate() - 7);
+  } else if (period === 'mes') {
+    start.setDate(1);
+  } else {
+    start = new Date(today.getFullYear(), 0, 1);
+  }
+  
+  return {
+    start: start.toISOString().split('T')[0],
+    end: today.toISOString().split('T')[0]
+  };
+}
+
+async function loadAdvancedStats(period) {
+  try {
+    const client = getSupabase();
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return;
+    
+    const { data: salon } = await client.from('salons').select('id').eq('email', user.email).single();
+    if (!salon) return;
+    
+    const { start, end } = getPeriodDates(period);
+    
+    // Get all reservations in period
+    const { data: rdvs } = await client.from('reservations')
+      .select('*')
+      .eq('salon_id', salon.id)
+      .gte('date_rdv', start)
+      .lte('date_rdv', end)
+      .order('date_rdv');
+    
+    // Get services for price lookup
+    const { data: services } = await client.from('services')
+      .select('nom, prix').eq('salon_id', salon.id);
+    
+    const priceMap = {};
+    if (services) services.forEach(s => { priceMap[s.nom] = s.prix || 0; });
+    
+    if (!rdvs) return;
+    
+    // Calculate KPIs
+    let totalCA = 0;
+    const clientsUniques = new Set();
+    const serviceCount = {};
+    const hourCount = {};
+    const dayCA = {};
+    const clientFreq = {};
+    
+    rdvs.forEach(r => {
+      // CA
+      const services_list = r.service ? r.service.split(' + ') : [];
+      let rdvCA = 0;
+      services_list.forEach(svc => {
+        const price = priceMap[svc.trim()] || 0;
+        rdvCA += price;
+        serviceCount[svc.trim()] = (serviceCount[svc.trim()] || 0) + 1;
+      });
+      if (rdvCA === 0) rdvCA = priceMap[r.service] || 0;
+      totalCA += rdvCA;
+      
+      // Clients uniques
+      if (r.client_nom) clientsUniques.add(r.client_nom.toLowerCase());
+      
+      // Heures de pointe
+      const hour = r.heure_rdv ? r.heure_rdv.slice(0,2) + 'h' : '?';
+      hourCount[hour] = (hourCount[hour] || 0) + 1;
+      
+      // CA par jour
+      dayCA[r.date_rdv] = (dayCA[r.date_rdv] || 0) + rdvCA;
+      
+      // Fréquence clients
+      const nom = r.client_nom || 'Desconocido';
+      clientFreq[nom] = (clientFreq[nom] || 0) + 1;
+    });
+    
+    // Update KPIs
+    document.getElementById('adv-ingresos').textContent = totalCA.toLocaleString();
+    document.getElementById('adv-citas').textContent = rdvs.length;
+    document.getElementById('adv-clientes-unicos').textContent = clientsUniques.size;
+    document.getElementById('adv-ticket').textContent = rdvs.length > 0 ? Math.round(totalCA / rdvs.length).toLocaleString() : '0';
+    
+    // Chart CA par jour
+    const dayLabels = Object.keys(dayCA).sort().map(d => {
+      const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      const date = new Date(d + 'T00:00:00');
+      return `${date.getDate()} ${months[date.getMonth()]}`;
+    });
+    const dayValues = Object.keys(dayCA).sort().map(d => Math.round(dayCA[d] / 1000));
+    
+    renderChart('chart-ca', 'bar', dayLabels, dayValues, 'CA (miles COP)', '#0D6E5E');
+    
+    // Chart Services
+    const topServices = Object.entries(serviceCount)
+      .sort((a,b) => b[1]-a[1]).slice(0,5);
+    renderChart('chart-services', 'doughnut', 
+      topServices.map(s => s[0]), 
+      topServices.map(s => s[1]),
+      'Citas', 
+      ['#0D6E5E','#FF6B35','#27AE60','#3498DB','#9B59B6']
+    );
+    
+    // Chart Horas
+    const hours = ['8h','9h','10h','11h','12h','13h','14h','15h','16h','17h','18h','19h'];
+    const hourValues = hours.map(h => hourCount[h] || 0);
+    renderChart('chart-hours', 'bar', hours, hourValues, 'Citas', '#FF6B35');
+    
+    // Top clients
+    const topClients = Object.entries(clientFreq)
+      .sort((a,b) => b[1]-a[1]).slice(0,5);
+    
+    document.getElementById('top-clients-list').innerHTML = topClients.length > 0
+      ? topClients.map((c, i) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #F3F4F6">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:28px;height:28px;border-radius:50%;background:${i===0?'#FF6B35':i===1?'#6B7280':'#E0E0E0'};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">${i+1}</div>
+            <div style="font-size:14px;font-weight:600">${c[0]}</div>
+          </div>
+          <div style="background:#E6F4F1;color:#0D6E5E;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">${c[1]} cita${c[1]>1?'s':''}</div>
+        </div>`).join('')
+      : '<div style="text-align:center;padding:20px;color:#6B7280;font-size:14px">No hay datos en este período</div>';
+    
+  } catch(e) { console.log('Stats error:', e); }
+}
+
+function renderChart(canvasId, type, labels, data, label, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  
+  // Destroy existing chart
+  if (statsCharts[canvasId]) {
+    statsCharts[canvasId].destroy();
+  }
+  
+  const ctx = canvas.getContext('2d');
+  statsCharts[canvasId] = new Chart(ctx, {
+    type,
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data,
+        backgroundColor: Array.isArray(color) ? color : color + '80',
+        borderColor: Array.isArray(color) ? color : color,
+        borderWidth: 2,
+        borderRadius: type === 'bar' ? 6 : 0,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: type === 'doughnut' }
+      },
+      scales: type !== 'doughnut' ? {
+        y: { beginAtZero: true, grid: { color: '#F3F4F6' } },
+        x: { grid: { display: false } }
+      } : {}
+    }
+  });
+}
+
 // ===== HISTORIAL =====
 let allHistorial = [];
 
@@ -1724,6 +1953,7 @@ function printQR() {
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="YaReserva">
 <meta name="theme-color" content="#0D6E5E">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
     <body>
       <h1>${salonNom}</h1>
