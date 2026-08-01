@@ -193,6 +193,11 @@
   }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="YaReserva">
+<meta name="theme-color" content="#0D6E5E">
 </head>
 <body>
 
@@ -1029,18 +1034,36 @@ async function showDash(section) {
     try {
       const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       const { data: { user } } = await client.auth.getUser();
-      if (user) {
-        const { data: salon } = await client.from('salons').select('*').eq('email', user.email).single();
-        if (salon) {
-          document.getElementById('config-salon-name').value = salon.nom || '';
-          if (document.getElementById('config-capacidad')) {
-            document.getElementById('config-capacidad').value = salon.capacidad || 1;
-          }
+      if (!user) {
+        console.log('No user session - not redirecting');
+        return; // Don't logout, just return
+      }
+      const { data: salon } = await client.from('salons').select('*').eq('email', user.email).single();
+      if (salon) {
+        document.getElementById('config-salon-name').value = salon.nom || '';
+        if (document.getElementById('config-capacidad')) {
+          document.getElementById('config-capacidad').value = salon.capacidad || 1;
+        }
+        // Load horarios
+        if (salon.dias_apertura) {
+          try {
+            const days = JSON.parse(salon.dias_apertura);
+            Object.keys(days).forEach(d => {
+              const el = document.getElementById(`day-${d}`);
+              if (el) el.checked = days[d];
+            });
+          } catch(e) {}
+        }
+        if (salon.heure_ouverture && document.getElementById('hora-apertura')) {
+          document.getElementById('hora-apertura').value = salon.heure_ouverture;
+        }
+        if (salon.heure_fermeture && document.getElementById('hora-cierre')) {
+          document.getElementById('hora-cierre').value = salon.heure_fermeture;
         }
       }
-    } catch(e) {}
+    } catch(e) { console.log('Config load error:', e); }
     // Load services
-    loadServices();
+    try { loadServices(); } catch(e) { console.log('Services load error:', e); }
   }
 }
 
@@ -1512,7 +1535,12 @@ function printQR() {
       img { width: 250px; height: 250px; border: 3px solid #0D6E5E; border-radius: 12px; padding: 10px; }
       .url { margin-top: 20px; font-size: 14px; color: #0D6E5E; font-weight: bold; }
       .powered { margin-top: 16px; font-size: 12px; color: #D1D5DB; }
-    </style></head>
+    </style><link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="YaReserva">
+<meta name="theme-color" content="#0D6E5E">
+</head>
     <body>
       <h1>${salonNom}</h1>
       <p>Escanea para reservar tu cita online</p>
