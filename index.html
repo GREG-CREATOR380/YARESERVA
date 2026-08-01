@@ -988,20 +988,37 @@ async function saveRdv() {
             const emptyState = rdvItems.querySelector('div[style*="text-align:center"]');
             if (emptyState) emptyState.remove();
             
+            const tempId = 'temp_' + Date.now();
+            // Store in rdvData
+            if (!window.rdvData) window.rdvData = {};
+            window.rdvData[tempId] = {
+              id: tempId,
+              client: clientNom,
+              service: service,
+              fecha: fecha,
+              hora: hora ? hora.slice(0,5) : '10:00'
+            };
+            
             const div = document.createElement('div');
             div.className = 'rdv-item';
+            div.id = 'rdv-' + tempId;
             div.innerHTML = `
-              <div class="rdv-time">${hora.slice(0,5)}</div>
+              <div class="rdv-time">${hora ? hora.slice(0,5) : '10:00'}</div>
               <div class="rdv-info">
                 <div class="rdv-client">${clientNom}</div>
                 <div class="rdv-service">${service}</div>
               </div>
               <span class="rdv-status confirmed">Confirmada</span>
-              <button onclick="deleteRdv('${Date.now()}')" style="background:none;border:none;cursor:pointer;color:#E74C3C;font-size:18px;padding:4px 8px;border-radius:6px" title="Cancelar cita">🗑️</button>`;
+              <button onclick="editRdv('${tempId}')" style="background:none;border:none;cursor:pointer;color:#0D6E5E;font-size:18px;padding:4px 8px;border-radius:6px" title="Editar">✏️</button>
+              <button onclick="deleteRdv('${tempId}')" style="background:none;border:none;cursor:pointer;color:#E74C3C;font-size:18px;padding:4px 8px;border-radius:6px" title="Cancelar">🗑️</button>`;
             rdvItems.appendChild(div);
             
             const stat = document.getElementById('stat-hoy');
-            if (stat) stat.textContent = parseInt(stat.textContent || 0) + 1;
+            if (stat) {
+              const current = parseInt(stat.textContent) || 0;
+              stat.textContent = current + 1;
+              document.getElementById('stat-hoy-sub').textContent = `+${current + 1} confirmada(s)`;
+            }
           }
 
           // Send WhatsApp notification to salon owner
