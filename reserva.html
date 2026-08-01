@@ -192,29 +192,28 @@
 const SUPABASE_URL = 'https://axleatjquybypunogkui.supabase.co';
 
   // ===== WHATSAPP CONFIRMATION =====
-  async function sendConfirmationToClient(phone, clientName, service, date, hour, salonName) {
+  function sendConfirmationToClient(phone, clientName, service, date, hour, salonName) {
     try {
-      // Format phone - remove spaces and + 
+      // Format phone
       let cleanPhone = phone.replace(/\s+/g, '').replace('+', '');
-      if (cleanPhone.startsWith('0')) cleanPhone = '57' + cleanPhone.slice(1);
       if (!cleanPhone.startsWith('57') && cleanPhone.length === 10) cleanPhone = '57' + cleanPhone;
       
       const msg = encodeURIComponent(
-        `✅ *Cita confirmada en ${salonName}*\n\n` +
+        `✅ Cita confirmada en ${salonName}!\n\n` +
         `👤 Nombre: ${clientName}\n` +
         `💅 Servicio: ${service}\n` +
         `📅 Fecha: ${date}\n` +
         `⏰ Hora: ${hour}\n\n` +
-        `Te esperamos! 😊\n` +
-        `_Recibirás un recordatorio 24h antes._`
+        `Te esperamos pronto! 😊`
       );
       
-      // Send via CallMeBot
-      const CMB_APIKEY = '4681566';
-      await fetch(`https://api.callmebot.com/whatsapp.php?phone=${cleanPhone}&text=${msg}&apikey=${CMB_APIKEY}`, { mode: 'no-cors' });
-      console.log('Confirmation sent to client!');
+      // Open WhatsApp with pre-filled message — client just clicks Send!
+      setTimeout(() => {
+        window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
+      }, 1500);
+      
     } catch(e) {
-      console.log('WhatsApp confirmation error:', e);
+      console.log('WhatsApp error:', e);
     }
   }
 const SUPABASE_KEY = 'sb_publishable_9FQEJatmTxpUdRZzWA8xyg_yor0A_EN';
@@ -273,8 +272,35 @@ async function init() {
 }
 
 // ===== SERVICES =====
-function renderServices() {
+let loadedServices = [];
+
+async function renderServices() {
   const list = document.getElementById('services-list');
+  list.innerHTML = '<div style="text-align:center;padding:30px;color:#6B7280">Cargando servicios...</div>';
+  
+  try {
+    if (salonData) {
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: services } = await client.from('services')
+        .select('*').eq('salon_id', salonData.id).eq('actif', true).order('created_at');
+      
+      if (services && services.length > 0) {
+        loadedServices = services;
+        list.innerHTML = services.map((s, i) => `
+          <div class="service-card" onclick="selectService(${i}, this)">
+            <div>
+              <div class="service-name">${s.nom}</div>
+              <div class="service-meta">${s.duree} min</div>
+            </div>
+            ${s.prix > 0 ? `<div class="service-price">${s.prix.toLocaleString()} COP</div>` : '<div class="service-price" style="font-size:13px;color:#6B7280">A consultar</div>'}
+          </div>`).join('');
+        return;
+      }
+    }
+  } catch(e) { console.log('Using default services'); }
+  
+  // Fallback to defaults
+  loadedServices = SERVICES_DEFAULT.map(s => ({ nom: s.nom, duree: s.duracion, prix: s.precio }));
   list.innerHTML = SERVICES_DEFAULT.map((s, i) => `
     <div class="service-card" onclick="selectService(${i}, this)">
       <div>
@@ -288,7 +314,7 @@ function renderServices() {
 function selectService(i, el) {
   document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
-  selected.service = SERVICES_DEFAULT[i];
+  selected.service = loadedServices[i];
   document.getElementById('btn-next-1').disabled = false;
 }
 
@@ -426,7 +452,7 @@ async function confirmarCita() {
     console.log('Demo mode');
   }
 
-  // Send WhatsApp confirmation to client
+  // Open WhatsApp confirmation for client
   if (phone) {
     const salonNom = salonData?.nom || 'el salón';
     sendConfirmationToClient(phone, name, selected.service?.nom, selected.dateLabel, selected.hour, salonNom);
