@@ -200,6 +200,7 @@
 <meta name="apple-mobile-web-app-title" content="YaReserva">
 <meta name="theme-color" content="#0D6E5E">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -1985,6 +1986,132 @@ async function updateRdv() {
   alert('✅ Cita modificada (demo)!');
 }
 
+async function generarFactura(id) {
+  const data = window.rdvData && window.rdvData[id];
+  if (!data) {
+    alert('Por favor recarga la página para generar la factura.');
+    return;
+  }
+  
+  const salonNom = document.getElementById('salon-name-display').textContent;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  
+  // Colors
+  const teal = [13, 110, 94];
+  const orange = [255, 107, 53];
+  const gray = [107, 114, 128];
+  const dark = [26, 18, 9];
+  
+  // Header background
+  doc.setFillColor(...teal);
+  doc.rect(0, 0, 210, 45, 'F');
+  
+  // Salon name
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(22);
+  doc.setFont('helvetica', 'bold');
+  doc.text(salonNom, 20, 20);
+  
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Recibo de cita', 20, 30);
+  
+  // YaReserva badge
+  doc.setFillColor(...orange);
+  doc.roundedRect(150, 12, 45, 16, 4, 4, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('YaReserva', 172, 22, { align: 'center' });
+  
+  // Factura number
+  const facNum = 'FAC-' + Date.now().toString().slice(-6);
+  doc.setTextColor(...gray);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(facNum, 155, 35);
+  
+  // Client info section
+  doc.setFillColor(249, 250, 251);
+  doc.rect(0, 50, 210, 35, 'F');
+  
+  doc.setTextColor(...dark);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CLIENTE', 20, 63);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(14);
+  doc.text(data.client || 'Cliente', 20, 75);
+  
+  doc.setFontSize(11);
+  doc.setTextColor(...gray);
+  doc.text('Fecha: ' + formatDate(data.fecha) + '  ·  Hora: ' + data.hora, 120, 63);
+  
+  // Services table header
+  doc.setFillColor(...teal);
+  doc.rect(15, 95, 180, 10, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SERVICIO', 20, 102);
+  doc.text('PRECIO', 170, 102, { align: 'right' });
+  
+  // Services
+  let y = 115;
+  let total = 0;
+  
+  // Parse services from combined string
+  const services = (data.service || '').split(' + ');
+  
+  services.forEach((svc, i) => {
+    doc.setTextColor(...dark);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    doc.text(svc.trim(), 20, y);
+    
+    // Get price from rdvData
+    const price = 0; // Price lookup would need service map
+    doc.text('A consultar', 170, y, { align: 'right' });
+    
+    if (i < services.length - 1) {
+      doc.setDrawColor(239, 239, 239);
+      doc.line(15, y + 5, 195, y + 5);
+    }
+    y += 16;
+  });
+  
+  // Total line
+  doc.setDrawColor(...teal);
+  doc.setLineWidth(0.5);
+  doc.line(15, y, 195, y);
+  y += 10;
+  
+  doc.setFillColor(...teal);
+  doc.rect(120, y - 5, 75, 14, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('TOTAL', 125, y + 5);
+  doc.text('Ver precio', 193, y + 5, { align: 'right' });
+  
+  // Footer
+  y += 30;
+  doc.setFillColor(249, 250, 251);
+  doc.rect(0, y, 210, 30, 'F');
+  doc.setTextColor(...gray);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text('Gracias por su visita! Esperamos verle pronto.', 105, y + 12, { align: 'center' });
+  doc.setTextColor(...teal);
+  doc.text('Powered by YaReserva · yareserva.app', 105, y + 22, { align: 'center' });
+  
+  // Save
+  const filename = `Factura_${salonNom}_${data.client}_${data.fecha}.pdf`;
+  doc.save(filename);
+}
+
 async function deleteRdv(id) {
   if (!confirm('¿Cancelar esta cita?')) return;
   
@@ -2072,7 +2199,8 @@ function printQR() {
     'h1{color:#0D6E5E;font-size:28px;margin-bottom:8px}' +
     'img{width:250px;height:250px;border:3px solid #0D6E5E;border-radius:12px;padding:10px}' +
     '.url{margin-top:20px;font-size:14px;color:#0D6E5E;font-weight:bold}' +
-    '.powered{margin-top:16px;font-size:12px;color:#D1D5DB}</style></head>' +
+    '.powered{margin-top:16px;font-size:12px;color:#D1D5DB}</style><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>' +
     '<body><h1>' + salonNom + '</h1>' +
     '<p>Escanea para reservar tu cita online</p>' +
     '<img src="' + imgData + '">' +
@@ -2199,6 +2327,7 @@ function shareFB() {
             </div>
             <span class="rdv-status ${r.statut === 'confirmada' ? 'confirmed' : 'pending'}">${r.statut === 'confirmada' ? 'Confirmada' : 'Pendiente'}</span>
             <button onclick="editRdv('${safeId}')" style="background:none;border:none;cursor:pointer;color:#0D6E5E;font-size:18px;padding:4px 8px;border-radius:6px" title="Editar">✏️</button>
+            <button onclick="generarFactura('${safeId}')" style="background:none;border:none;cursor:pointer;color:#FF6B35;font-size:18px;padding:4px 8px;border-radius:6px" title="Factura PDF">🧾</button>
             <button onclick="deleteRdv('${safeId}')" style="background:none;border:none;cursor:pointer;color:#E74C3C;font-size:18px;padding:4px 8px;border-radius:6px" title="Cancelar">🗑️</button>
           </div>`;
         }).join('');
