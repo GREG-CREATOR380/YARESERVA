@@ -702,14 +702,52 @@
               <div class="form-group"><label>WhatsApp</label><input type="tel" value="+57 300 000 0000"></div>
               <div class="form-group"><label>Dirección</label><input type="text" id="config-direccion" placeholder="Ej: Calle 15 #5-30, Granada, Cali"></div>
               <div class="form-group">
-                <label>Número de empleados / plazas por horario</label>
-                <select id="config-capacidad">
-                  <option value="1">1 empleado (1 cita por horario)</option>
-                  <option value="2">2 empleados (2 citas por horario)</option>
-                  <option value="3">3 empleados (3 citas por horario)</option>
-                  <option value="4">4 empleados (4 citas por horario)</option>
-                  <option value="5">5 empleados (5 citas por horario)</option>
-                </select>
+                <label style="margin-bottom:12px;display:block">Número de empleados por día</label>
+                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px">
+                  <div style="text-align:center">
+                    <div style="font-size:12px;font-weight:600;color:#6B7280;margin-bottom:6px">Lun</div>
+                    <select id="cap-lun" style="width:100%;padding:8px 4px;border:1px solid #E0E0E0;border-radius:8px;text-align:center;font-size:14px;font-weight:700">
+                      <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+                    </select>
+                  </div>
+                  <div style="text-align:center">
+                    <div style="font-size:12px;font-weight:600;color:#6B7280;margin-bottom:6px">Mar</div>
+                    <select id="cap-mar" style="width:100%;padding:8px 4px;border:1px solid #E0E0E0;border-radius:8px;text-align:center;font-size:14px;font-weight:700">
+                      <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+                    </select>
+                  </div>
+                  <div style="text-align:center">
+                    <div style="font-size:12px;font-weight:600;color:#6B7280;margin-bottom:6px">Mié</div>
+                    <select id="cap-mie" style="width:100%;padding:8px 4px;border:1px solid #E0E0E0;border-radius:8px;text-align:center;font-size:14px;font-weight:700">
+                      <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+                    </select>
+                  </div>
+                  <div style="text-align:center">
+                    <div style="font-size:12px;font-weight:600;color:#6B7280;margin-bottom:6px">Jue</div>
+                    <select id="cap-jue" style="width:100%;padding:8px 4px;border:1px solid #E0E0E0;border-radius:8px;text-align:center;font-size:14px;font-weight:700">
+                      <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+                    </select>
+                  </div>
+                  <div style="text-align:center">
+                    <div style="font-size:12px;font-weight:600;color:#6B7280;margin-bottom:6px">Vie</div>
+                    <select id="cap-vie" style="width:100%;padding:8px 4px;border:1px solid #E0E0E0;border-radius:8px;text-align:center;font-size:14px;font-weight:700">
+                      <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+                    </select>
+                  </div>
+                  <div style="text-align:center">
+                    <div style="font-size:12px;font-weight:600;color:#6B7280;margin-bottom:6px">Sáb</div>
+                    <select id="cap-sab" style="width:100%;padding:8px 4px;border:1px solid #E0E0E0;border-radius:8px;text-align:center;font-size:14px;font-weight:700">
+                      <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+                    </select>
+                  </div>
+                  <div style="text-align:center">
+                    <div style="font-size:12px;font-weight:600;color:#6B7280;margin-bottom:6px">Dom</div>
+                    <select id="cap-dom" style="width:100%;padding:8px 4px;border:1px solid #E0E0E0;border-radius:8px;text-align:center;font-size:14px;font-weight:700">
+                      <option>0</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                    </select>
+                  </div>
+                </div>
+                <div style="font-size:12px;color:#6B7280;margin-top:8px">💡 0 = fermé ce jour-là</div>
               </div>
               <button class="btn-submit" onclick="saveConfig()">Guardar cambios</button>
             </div>
@@ -1126,6 +1164,17 @@ async function showDash(section) {
             });
           } catch(e) {}
         }
+        
+        // Load capacidad por dia
+        if (salon.capacidad_por_dia) {
+          try {
+            const caps = JSON.parse(salon.capacidad_por_dia);
+            Object.keys(caps).forEach(d => {
+              const el = document.getElementById(`cap-${d}`);
+              if (el) el.value = caps[d];
+            });
+          } catch(e) {}
+        }
         if (salon.heure_ouverture && document.getElementById('hora-apertura')) {
           document.getElementById('hora-apertura').value = salon.heure_ouverture;
         }
@@ -1358,7 +1407,20 @@ async function saveHorarios() {
 
 async function saveConfig() {
   const name = document.getElementById('config-salon-name').value;
-  const capacidad = document.getElementById('config-capacidad')?.value || 1;
+  
+  // Get capacidad por dia
+  const capacidadDia = {
+    lun: parseInt(document.getElementById('cap-lun')?.value || 1),
+    mar: parseInt(document.getElementById('cap-mar')?.value || 1),
+    mie: parseInt(document.getElementById('cap-mie')?.value || 1),
+    jue: parseInt(document.getElementById('cap-jue')?.value || 1),
+    vie: parseInt(document.getElementById('cap-vie')?.value || 1),
+    sab: parseInt(document.getElementById('cap-sab')?.value || 1),
+    dom: parseInt(document.getElementById('cap-dom')?.value || 0),
+  };
+  
+  // Max capacidad for backward compat
+  const maxCap = Math.max(...Object.values(capacidadDia));
   
   try {
     const client = getSupabase();
@@ -1366,7 +1428,8 @@ async function saveConfig() {
     if (user) {
       await client.from('salons').update({ 
         nom: name,
-        capacidad: parseInt(capacidad)
+        capacidad: maxCap,
+        capacidad_por_dia: JSON.stringify(capacidadDia)
       }).eq('email', user.email);
     }
   } catch(e) { console.log('Error saving config:', e); }
