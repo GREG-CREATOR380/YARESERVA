@@ -1175,6 +1175,22 @@ async function showDash(section) {
             });
           } catch(e) {}
         }
+        
+        // Load photo and description
+        if (salon.photo_url && document.getElementById('config-photo')) {
+          document.getElementById('config-photo').value = salon.photo_url;
+          document.getElementById('photo-preview-img').src = salon.photo_url;
+          document.getElementById('photo-preview').style.display = 'block';
+        }
+        if (salon.description && document.getElementById('config-descripcion')) {
+          document.getElementById('config-descripcion').value = salon.description;
+        }
+        if (salon.whatsapp && document.getElementById('config-whatsapp')) {
+          document.getElementById('config-whatsapp').value = salon.whatsapp;
+        }
+        if (salon.adresse && document.getElementById('config-direccion')) {
+          document.getElementById('config-direccion').value = salon.adresse;
+        }
         if (salon.heure_ouverture && document.getElementById('hora-apertura')) {
           document.getElementById('hora-apertura').value = salon.heure_ouverture;
         }
@@ -1374,6 +1390,24 @@ function addClientToUI(name, phone) {
   if (statEl) statEl.textContent = parseInt(statEl.textContent || 0) + 1;
 }
 
+// Photo preview
+document.addEventListener('DOMContentLoaded', function() {
+  const photoInput = document.getElementById('config-photo');
+  if (photoInput) {
+    photoInput.addEventListener('input', function() {
+      const url = this.value;
+      const preview = document.getElementById('photo-preview');
+      const img = document.getElementById('photo-preview-img');
+      if (url && url.startsWith('http')) {
+        img.src = url;
+        preview.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
+      }
+    });
+  }
+});
+
 async function saveHorarios() {
   const days = {
     lun: document.getElementById('day-lun')?.checked,
@@ -1426,10 +1460,19 @@ async function saveConfig() {
     const client = getSupabase();
     const { data: { user } } = await client.auth.getUser();
     if (user) {
+      const photo = document.getElementById('config-photo')?.value || '';
+      const desc = document.getElementById('config-descripcion')?.value || '';
+      const whatsapp = document.getElementById('config-whatsapp')?.value || '';
+      const direccion = document.getElementById('config-direccion')?.value || '';
+      
       await client.from('salons').update({ 
         nom: name,
         capacidad: maxCap,
-        capacidad_por_dia: JSON.stringify(capacidadDia)
+        capacidad_por_dia: JSON.stringify(capacidadDia),
+        photo_url: photo,
+        description: desc,
+        whatsapp: whatsapp,
+        adresse: direccion
       }).eq('email', user.email);
     }
   } catch(e) { console.log('Error saving config:', e); }

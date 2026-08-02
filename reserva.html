@@ -92,8 +92,14 @@
 </head>
 <body>
 
+<!-- PHOTO BANNER -->
+<div id="salon-photo-banner" style="display:none;width:100%;height:200px;overflow:hidden;position:relative">
+  <img id="salon-photo-img" src="" style="width:100%;height:100%;object-fit:cover">
+  <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.5))"></div>
+</div>
+
 <!-- HEADER -->
-<div class="salon-header">
+<div class="salon-header" id="salon-header-main">
   <div id="salon-logo-container">
     <div class="salon-avatar" id="salon-avatar">💇</div>
   </div>
@@ -317,6 +323,24 @@ async function init() {
       // Show info bar if any info available
       if (salon.heure_ouverture || salon.whatsapp || salon.adresse) {
         document.getElementById('salon-info-bar').style.display = 'flex';
+      }
+      
+      // Show photo banner
+      if (salon.photo_url) {
+        document.getElementById('salon-photo-img').src = salon.photo_url;
+        document.getElementById('salon-photo-banner').style.display = 'block';
+        document.getElementById('salon-header-main').style.marginTop = '-20px';
+        document.getElementById('salon-header-main').style.borderRadius = '20px 20px 0 0';
+        document.getElementById('salon-avatar').style.display = 'none';
+      }
+      
+      // Show description
+      if (salon.description) {
+        const descBox = document.getElementById('salon-description-box');
+        if (descBox) {
+          descBox.textContent = '📝 ' + salon.description;
+          descBox.style.display = 'block';
+        }
       }
       
       console.log('Salon loaded!');
