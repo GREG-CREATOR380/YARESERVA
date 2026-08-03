@@ -1025,9 +1025,11 @@ function switchTab(tab) {
 }
 
 async function doLogin() {
-  const email = document.getElementById('login-email').value;
+  const email = sanitize(document.getElementById('login-email').value);
   const pass = document.getElementById('login-pass').value;
   if (!email || !pass) { alert('Por favor complete todos los campos.'); return; }
+  if (!validateEmail(email)) { alert('Por favor ingrese un email válido.'); return; }
+  if (pass.length < 6) { alert('La contraseña debe tener al menos 6 caracteres.'); return; }
   
   try {
     const client = getSupabase();
@@ -1051,12 +1053,16 @@ async function doLogin() {
 }
 
 async function doRegister() {
-  const name = document.getElementById('reg-name').value;
-  const email = document.getElementById('reg-email').value;
-  const phone = document.getElementById('reg-phone').value;
-  const sector = document.getElementById('reg-sector').value;
+  const name = sanitize(document.getElementById('reg-name').value);
+  const email = sanitize(document.getElementById('reg-email').value);
+  const phone = sanitizePhone(document.getElementById('reg-phone').value);
+  const sector = sanitize(document.getElementById('reg-sector').value);
   const pass = document.getElementById('reg-pass').value;
   if (!name || !email || !phone || !pass) { alert('Por favor complete todos los campos obligatorios.'); return; }
+  if (!validateEmail(email)) { alert('Por favor ingrese un email válido.'); return; }
+  if (!validatePhone(phone)) { alert('Por favor ingrese un número de teléfono válido.'); return; }
+  if (pass.length < 6) { alert('La contraseña debe tener al menos 6 caracteres.'); return; }
+  if (name.length < 2) { alert('El nombre del negocio debe tener al menos 2 caracteres.'); return; }
   
   const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
   
@@ -1224,16 +1230,17 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 window.onclick = e => { if(e.target.classList.contains('modal-overlay')) e.target.classList.remove('open'); }
 
 async function saveRdv() {
-  const clientNom = document.getElementById('rdv-cliente').value;
-  const phone = document.getElementById('rdv-phone').value;
-  const service = document.getElementById('rdv-service').value;
-  const fecha = document.getElementById('rdv-fecha').value;
-  const hora = document.getElementById('rdv-hora').value;
+  const clientNom = sanitize(document.getElementById('rdv-cliente').value);
+  const phone = sanitizePhone(document.getElementById('rdv-phone').value);
+  const service = sanitize(document.getElementById('rdv-service').value);
+  const fecha = sanitize(document.getElementById('rdv-fecha').value);
+  const hora = sanitize(document.getElementById('rdv-hora').value);
 
   if (!clientNom || !fecha || !hora) {
     alert('Por favor complete nombre, fecha y hora.');
     return;
   }
+  if (clientNom.length < 2) { alert('El nombre debe tener al menos 2 caracteres.'); return; }
 
   try {
     const client = getSupabase();
@@ -1339,9 +1346,11 @@ async function saveRdv() {
 }
 
 async function saveCliente() {
-  const name = document.getElementById('new-client-name').value;
-  const phone = document.getElementById('new-client-phone').value;
+  const name = sanitize(document.getElementById('new-client-name').value);
+  const phone = sanitizePhone(document.getElementById('new-client-phone').value);
   if(!name || !phone) { alert('Por favor complete nombre y teléfono.'); return; }
+  if(name.length < 2) { alert('El nombre debe tener al menos 2 caracteres.'); return; }
+  if(!validatePhone(phone)) { alert('Por favor ingrese un número de teléfono válido.'); return; }
 
   try {
     const client = getSupabase();
@@ -2233,6 +2242,32 @@ function shareFB() {
   window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(bookingURL)}`, '_blank');
 }
 
+
+  // ===== SECURITE : VALIDATION & NETTOYAGE =====
+  function sanitize(str) {
+    if (!str) return '';
+    return str
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;')
+      .trim()
+      .slice(0, 200); // Limite à 200 caractères
+  }
+  
+  function sanitizePhone(phone) {
+    if (!phone) return '';
+    return phone.replace(/[^0-9+\s-]/g, '').trim().slice(0, 20);
+  }
+  
+  function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+  
+  function validatePhone(phone) {
+    return phone.replace(/\D/g, '').length >= 7;
+  }
 
   // ===== SUPABASE CONFIG =====
   const SUPABASE_URL = 'https://axleatjquybypunogkui.supabase.co';

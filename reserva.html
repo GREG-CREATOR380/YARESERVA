@@ -599,10 +599,24 @@ function checkForm() {
 }
 
 // ===== CONFIRM =====
+// Sanitize inputs
+function sanitize(str) {
+  if (!str) return '';
+  return str.replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').trim().slice(0,200);
+}
+
+function sanitizePhone(phone) {
+  if (!phone) return '';
+  return phone.replace(/[^0-9+\s-]/g,'').trim().slice(0,20);
+}
+
 async function confirmarCita() {
-  const name = document.getElementById('client-name').value;
-  const phone = document.getElementById('client-phone').value;
-  const notes = document.getElementById('client-notes').value;
+  const name = sanitize(document.getElementById('client-name').value);
+  const phone = sanitizePhone(document.getElementById('client-phone').value);
+  const notes = sanitize(document.getElementById('client-notes').value);
+  
+  if (name.length < 2) { alert('Por favor ingrese su nombre completo.'); return; }
+  if (phone.replace(/\D/g,'').length < 7) { alert('Por favor ingrese un número de WhatsApp válido.'); return; }
 
   try {
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
