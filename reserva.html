@@ -194,6 +194,11 @@
       <input type="tel" id="client-phone" placeholder="+57 300 000 0000" oninput="checkForm()">
     </div>
     <div class="form-group">
+      <label>🎂 Fecha de cumpleaños (opcional)</label>
+      <input type="date" id="client-birthday" placeholder="DD/MM/AAAA">
+      <div style="font-size:12px;color:#6B7280;margin-top:4px">Para enviarte un regalo especial el día de tu cumpleaños 🎁</div>
+    </div>
+    <div class="form-group">
       <label>Notas (opcional)</label>
       <input type="text" id="client-notes" placeholder="Ej: primera vez, alergia a...">
     </div>
@@ -622,6 +627,9 @@ async function confirmarCita() {
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     
     if (salonData) {
+      const birthday = document.getElementById('client-birthday')?.value || null;
+      
+      // Save reservation
       await client.from('reservations').insert([{
         salon_id: salonData.id,
         client_nom: name,
@@ -632,6 +640,28 @@ async function confirmarCita() {
         notes,
         statut: 'confirmada'
       }]);
+      
+      // Save or update client with birthday
+      if (birthday || phone) {
+        const { data: existingClient } = await client.from('clients')
+          .select('id').eq('salon_id', salonData.id).eq('telephone', phone).single();
+        
+        if (existingClient) {
+          // Update existing client with birthday
+          if (birthday) {
+            await client.from('clients').update({ date_naissance: birthday })
+              .eq('id', existingClient.id);
+          }
+        } else {
+          // Create new client
+          await client.from('clients').insert([{
+            salon_id: salonData.id,
+            nom: name,
+            telephone: phone,
+            date_naissance: birthday || null
+          }]);
+        }
+      }
     }
   } catch(e) {
     console.log('Demo mode');
