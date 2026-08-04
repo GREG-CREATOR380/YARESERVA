@@ -1053,6 +1053,10 @@ async function doLogin() {
 }
 
 async function doRegister() {
+  // Inscription bloquée — passer par Gregory
+  alert('⚠️ Para crear su cuenta YaReserva, contacte a nuestro equipo:\n\n📱 WhatsApp: +57 314 630 8300\n\nLe instalamos todo en 2 horas! 😊');
+  return;
+  
   const name = sanitize(document.getElementById('reg-name').value);
   const email = sanitize(document.getElementById('reg-email').value);
   const phone = sanitizePhone(document.getElementById('reg-phone').value);
