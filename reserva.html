@@ -121,9 +121,10 @@
 <!-- STEPS BAR -->
 <div class="steps-bar">
   <div class="step-tab active" id="tab-1">1. Servicio</div>
-  <div class="step-tab" id="tab-2">2. Fecha</div>
-  <div class="step-tab" id="tab-3">3. Hora</div>
-  <div class="step-tab" id="tab-4">4. Datos</div>
+  <div class="step-tab" id="tab-2">2. Profesional</div>
+  <div class="step-tab" id="tab-3">3. Fecha</div>
+  <div class="step-tab" id="tab-4">4. Hora</div>
+  <div class="step-tab" id="tab-5">5. Datos</div>
 </div>
 
 <!-- CONTENT -->
@@ -154,31 +155,41 @@
     <button class="btn-next" id="btn-next-1" disabled onclick="goStep(2)">Continuar →</button>
   </div>
 
-  <!-- STEP 2 — FECHA -->
+  <!-- STEP 2 — PROFESIONAL -->
   <div class="step-view" id="step-2">
-    <div class="step-title">¿Qué día prefieres?</div>
-    <div class="step-sub">Selecciona una fecha disponible</div>
-    <div class="dates-grid" id="dates-grid"></div>
+    <div class="step-title">¿Con quién prefieres?</div>
+    <div class="step-sub">Selecciona tu profesional</div>
+    <div class="services-grid" id="empleados-list"></div>
     <button class="btn-next" id="btn-next-2" disabled onclick="goStep(3)">Continuar →</button>
     <button class="btn-back" onclick="goStep(1)">← Volver</button>
   </div>
 
-  <!-- STEP 3 — HORA -->
+  <!-- STEP 3 — FECHA -->
   <div class="step-view" id="step-3">
-    <div class="step-title">¿A qué hora?</div>
-    <div class="step-sub">Selecciona un horario disponible</div>
-    <div class="hours-grid" id="hours-grid"></div>
+    <div class="step-title">¿Qué día prefieres?</div>
+    <div class="step-sub">Selecciona una fecha disponible</div>
+    <div class="dates-grid" id="dates-grid"></div>
     <button class="btn-next" id="btn-next-3" disabled onclick="goStep(4)">Continuar →</button>
     <button class="btn-back" onclick="goStep(2)">← Volver</button>
   </div>
 
-  <!-- STEP 4 — DATOS -->
+  <!-- STEP 4 — HORA -->
   <div class="step-view" id="step-4">
+    <div class="step-title">¿A qué hora?</div>
+    <div class="step-sub">Selecciona un horario disponible</div>
+    <div class="hours-grid" id="hours-grid"></div>
+    <button class="btn-next" id="btn-next-4" disabled onclick="goStep(5)">Continuar →</button>
+    <button class="btn-back" onclick="goStep(3)">← Volver</button>
+  </div>
+
+  <!-- STEP 5 — DATOS -->
+  <div class="step-view" id="step-5">
     <div class="step-title">Tus datos</div>
     <div class="step-sub">Para confirmar tu cita</div>
 
     <div class="summary-card">
       <div class="summary-row"><span class="summary-label">Servicio(s)</span><span class="summary-value" id="sum-service" style="text-align:right;font-size:13px">—</span></div>
+      <div class="summary-row"><span class="summary-label">Profesional</span><span class="summary-value" id="sum-empleado">—</span></div>
       <div class="summary-row"><span class="summary-label">Duración total</span><span class="summary-value" id="sum-duracion">—</span></div>
       <div class="summary-row"><span class="summary-label">Precio total</span><span class="summary-value" id="sum-precio" style="color:#0D6E5E">—</span></div>
       <div class="summary-row"><span class="summary-label">Fecha</span><span class="summary-value" id="sum-date">—</span></div>
@@ -204,7 +215,7 @@
     </div>
 
     <button class="btn-next" id="btn-confirm" disabled onclick="confirmarCita()">✅ Confirmar cita</button>
-    <button class="btn-back" onclick="goStep(3)">← Volver</button>
+    <button class="btn-back" onclick="goStep(4)">← Volver</button>
   </div>
 
   <!-- SUCCESS -->
@@ -359,6 +370,70 @@ async function init() {
   
   renderServices();
   renderDates();
+}
+
+// ===== EMPLEADOS =====
+async function renderEmpleados() {
+  const list = document.getElementById('empleados-list');
+  if (!list) return;
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7280">Cargando...</div>';
+  
+  try {
+    if (salonData) {
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      const { data: empleados } = await client.from('employes')
+        .select('*').eq('salon_id', salonData.id).eq('actif', true).order('created_at');
+      
+      if (empleados && empleados.length > 0) {
+        // Add "Sin preferencia" option first
+        const cards = [
+          `<div class="service-card" id="emp-card-any" onclick="selectEmpleado(null, this)">
+            <div style="display:flex;align-items:center;gap:12px;flex:1">
+              <div style="width:48px;height:48px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:24px">🎲</div>
+              <div>
+                <div class="service-name">Sin preferencia</div>
+                <div class="service-meta">Cualquier profesional disponible</div>
+              </div>
+            </div>
+            <div class="service-check" id="emp-check-any">✓</div>
+          </div>`
+        ];
+        
+        empleados.forEach((e, i) => {
+          cards.push(`<div class="service-card" id="emp-card-${i}" onclick="selectEmpleado(${JSON.stringify(e).replace(/"/g,'&quot;')}, this)">
+            <div style="display:flex;align-items:center;gap:12px;flex:1">
+              ${e.photo_url 
+                ? `<img src="${e.photo_url}" style="width:48px;height:48px;border-radius:50%;object-fit:cover">`
+                : `<div style="width:48px;height:48px;border-radius:50%;background:#0D6E5E;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px">${e.nom[0].toUpperCase()}</div>`
+              }
+              <div>
+                <div class="service-name">${e.nom}</div>
+                ${e.especialidad ? `<div class="service-meta">${e.especialidad}</div>` : ''}
+              </div>
+            </div>
+            <div class="service-check" id="emp-check-${i}">✓</div>
+          </div>`);
+        });
+        
+        list.innerHTML = cards.join('');
+        
+        // Auto-select "Sin preferencia"
+        selectEmpleado(null, document.getElementById('emp-card-any'));
+        return;
+      }
+    }
+  } catch(e) { console.log('Error loading empleados:', e); }
+  
+  // No employees — skip to step 3
+  selected.empleado = null;
+  goStep(3);
+}
+
+function selectEmpleado(empleado, el) {
+  document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
+  if (el) el.classList.add('selected');
+  selected.empleado = empleado;
+  document.getElementById('btn-next-2').disabled = false;
 }
 
 // ===== SERVICES =====
@@ -581,9 +656,20 @@ function goStep(n) {
     t.classList.toggle('active', i + 1 === n);
     t.classList.toggle('done', i + 1 < n);
   });
-  document.getElementById(`step-${n}`).classList.add('active');
   
-  if (n === 4) {
+  const stepEl = document.getElementById(`step-${n}`);
+  if (stepEl) stepEl.classList.add('active');
+  
+  // Load employees on step 2
+  if (n === 2) renderEmpleados();
+  
+  // Load dates on step 3
+  if (n === 3) renderDates();
+  
+  // Load hours on step 4
+  if (n === 4 && selected.date) renderHours(selected.date);
+  
+  if (n === 5) {
     document.getElementById('sum-service').textContent = selected.service?.nom || '—';
     const duree = selected.service?.duree || 0;
     document.getElementById('sum-duracion').textContent = duree >= 60 
@@ -593,6 +679,7 @@ function goStep(n) {
     document.getElementById('sum-precio').textContent = prix > 0 ? prix.toLocaleString() + ' COP' : 'A consultar';
     document.getElementById('sum-date').textContent = selected.dateLabel || '—';
     document.getElementById('sum-hour').textContent = selected.hour || '—';
+    document.getElementById('sum-empleado').textContent = selected.empleado?.nom || 'Sin preferencia';
   }
   window.scrollTo(0, 0);
 }
@@ -638,7 +725,8 @@ async function confirmarCita() {
         date_rdv: selected.date,
         heure_rdv: selected.hour,
         notes,
-        statut: 'confirmada'
+        statut: 'confirmada',
+        employe_nom: selected.empleado?.nom || null
       }]);
       
       // Save or update client with birthday
