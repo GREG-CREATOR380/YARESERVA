@@ -369,7 +369,6 @@ async function init() {
   }
   
   renderServices();
-  renderDates();
 }
 
 // ===== EMPLEADOS =====
@@ -424,9 +423,22 @@ async function renderEmpleados() {
     }
   } catch(e) { console.log('Error loading empleados:', e); }
   
-  // No employees — skip to step 3
+  // No employees — show sin preferencia only
   selected.empleado = null;
-  goStep(3);
+  const list = document.getElementById('empleados-list');
+  if (list) {
+    list.innerHTML = `<div class="service-card selected" id="emp-card-any" onclick="selectEmpleado(null, this)">
+      <div style="display:flex;align-items:center;gap:12px;flex:1">
+        <div style="width:48px;height:48px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:24px">🎲</div>
+        <div>
+          <div class="service-name">Sin preferencia</div>
+          <div class="service-meta">Cualquier profesional disponible</div>
+        </div>
+      </div>
+      <div class="service-check">✓</div>
+    </div>`;
+    document.getElementById('btn-next-2').disabled = false;
+  }
 }
 
 function selectEmpleado(empleado, el) {
@@ -582,7 +594,6 @@ function selectDate(dateStr, label, el) {
   selected.date = dateStr;
   selected.dateLabel = label;
   document.getElementById('btn-next-3').disabled = false;
-  renderHours(dateStr);
 }
 
 // ===== HOURS =====
@@ -646,7 +657,7 @@ function selectHour(hour, el) {
   document.querySelectorAll('.hour-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
   selected.hour = hour;
-  document.getElementById('btn-next-3').disabled = false;
+  document.getElementById('btn-next-4').disabled = false;
 }
 
 // ===== NAVIGATION =====
@@ -787,4 +798,4 @@ function sendWA() {
 init();
 </script>
 </body>
-</html></html>
+</html>
