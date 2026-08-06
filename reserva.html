@@ -3,541 +3,323 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YaReserva — Reserva tu cita</title>
+<title>YaReserva</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#F9FAFB; color:#1A1209; }
-  :root { --teal:#0D6E5E; --orange:#FF6B35; }
-
-  .salon-photo { width:100%; height:200px; object-fit:cover; display:none; }
-  .salon-header { background:var(--teal); color:#fff; padding:20px; text-align:center; }
-  .salon-name { font-size:22px; font-weight:800; }
-  .salon-info { font-size:14px; opacity:0.8; margin-top:4px; }
-
-  .steps-bar { display:flex; background:#fff; border-bottom:1px solid #EFEFEF; overflow-x:auto; }
-  .step-tab { flex:1; padding:12px 4px; text-align:center; font-size:11px; font-weight:600; color:#9CA3AF; white-space:nowrap; border-bottom:3px solid transparent; }
-  .step-tab.active { color:var(--teal); border-bottom-color:var(--teal); }
-  .step-tab.done { color:var(--teal); }
-
-  .step-view { display:none; padding:20px; max-width:560px; margin:0 auto; }
-  .step-view.active { display:block; }
-  .step-title { font-size:20px; font-weight:800; margin-bottom:6px; }
-  .step-sub { font-size:14px; color:#6B7280; margin-bottom:20px; }
-
-  /* SERVICES */
-  .services-grid { display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
-  .service-card { background:#fff; border:2px solid #EFEFEF; border-radius:14px; padding:16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; transition:all .2s; }
-  .service-card:hover { border-color:var(--teal); }
-  .service-card.selected { border-color:var(--teal); background:#E6F4F1; }
-  .service-name { font-size:15px; font-weight:700; }
-  .service-meta { font-size:13px; color:#6B7280; margin-top:2px; }
-  .service-check { width:28px; height:28px; border-radius:50%; border:2px solid #E0E0E0; display:flex; align-items:center; justify-content:center; color:transparent; font-size:14px; transition:all .2s; }
-  .service-card.selected .service-check { background:var(--teal); border-color:var(--teal); color:#fff; }
-
-  /* DATES */
-  .dates-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
-  .date-btn { border:2px solid #EFEFEF; border-radius:12px; background:#fff; cursor:pointer; padding:12px 4px; font-size:13px; font-weight:600; display:flex; flex-direction:column; align-items:center; gap:2px; transition:all .2s; }
-  .date-btn:hover { border-color:var(--teal); }
-  .date-btn.selected { background:var(--teal); border-color:var(--teal); color:#fff; }
-  .date-btn.today { border-color:var(--orange); }
-  .date-day { font-size:11px; font-weight:600; opacity:0.7; }
-  .date-num { font-size:18px; font-weight:800; }
-
-  /* HOURS */
-  .hours-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; }
-  .hour-btn { border:2px solid #EFEFEF; border-radius:12px; background:#fff; cursor:pointer; padding:14px 8px; font-size:14px; font-weight:700; text-align:center; transition:all .2s; }
-  .hour-btn:hover:not(:disabled) { border-color:var(--teal); }
-  .hour-btn.selected { background:var(--teal); border-color:var(--teal); color:#fff; }
-  .hour-btn.taken { background:#F3F4F6; color:#D1D5DB; cursor:not-allowed; border-color:#F3F4F6; }
-
-  /* FORM */
-  .form-group { margin-bottom:16px; }
-  .form-group label { display:block; font-size:14px; font-weight:600; margin-bottom:8px; }
-  .form-group input { width:100%; padding:14px 16px; border-radius:12px; border:2px solid #E0E0E0; font-size:15px; outline:none; font-family:inherit; }
-  .form-group input:focus { border-color:var(--teal); }
-  .form-hint { font-size:12px; color:#6B7280; margin-top:4px; }
-
-  .summary-card { background:#F9FAFB; border-radius:14px; padding:16px; margin-bottom:20px; }
-  .summary-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #EFEFEF; font-size:14px; }
-  .summary-row:last-child { border:none; }
-  .summary-label { color:#6B7280; }
-  .summary-value { font-weight:700; }
-
-  .btn-next { width:100%; background:var(--teal); color:#fff; border:none; border-radius:14px; padding:16px; font-size:16px; font-weight:700; cursor:pointer; margin-bottom:12px; font-family:inherit; }
-  .btn-next:disabled { opacity:0.4; cursor:not-allowed; }
-  .btn-back { width:100%; background:#F3F4F6; color:#6B7280; border:none; border-radius:14px; padding:14px; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit; }
-
-  .success-view { display:none; text-align:center; padding:40px 20px; }
-  .success-icon { font-size:64px; margin-bottom:16px; }
-  .success-title { font-size:24px; font-weight:800; color:var(--teal); margin-bottom:8px; }
-  .success-sub { font-size:15px; color:#6B7280; margin-bottom:24px; }
-  .btn-wa { background:#25D366; color:#fff; border:none; border-radius:14px; padding:16px 24px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; }
-
-  footer { text-align:center; padding:20px; color:#9CA3AF; font-size:12px; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#F9FAFB; }
+:root { --teal:#0D6E5E; --orange:#FF6B35; }
+.salon-photo { width:100%; height:200px; object-fit:cover; display:none; }
+.salon-header { background:var(--teal); color:#fff; padding:20px; text-align:center; }
+.salon-name { font-size:22px; font-weight:800; }
+.salon-info { font-size:13px; opacity:0.8; margin-top:4px; }
+.steps-bar { display:flex; background:#fff; border-bottom:1px solid #eee; }
+.step-tab { flex:1; padding:12px 4px; text-align:center; font-size:11px; font-weight:600; color:#9CA3AF; border-bottom:3px solid transparent; }
+.step-tab.active { color:var(--teal); border-bottom-color:var(--teal); }
+.step-tab.done { color:var(--teal); }
+.step-view { display:none; padding:20px; max-width:560px; margin:0 auto; }
+.step-view.active { display:block; }
+.step-title { font-size:20px; font-weight:800; margin-bottom:6px; }
+.step-sub { font-size:14px; color:#6B7280; margin-bottom:20px; }
+.card { background:#fff; border:2px solid #eee; border-radius:14px; padding:16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; margin-bottom:10px; }
+.card:hover { border-color:var(--teal); }
+.card.sel { border-color:var(--teal); background:#E6F4F1; }
+.card-name { font-size:15px; font-weight:700; }
+.card-meta { font-size:13px; color:#6B7280; margin-top:2px; }
+.card-check { width:28px; height:28px; border-radius:50%; border:2px solid #ddd; display:flex; align-items:center; justify-content:center; font-size:14px; }
+.card.sel .card-check { background:var(--teal); border-color:var(--teal); color:#fff; }
+.dates-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
+.dcrd { border:2px solid #eee; border-radius:12px; background:#fff; cursor:pointer; padding:12px 4px; text-align:center; }
+.dcrd:hover { border-color:var(--teal); }
+.dcrd.sel { background:var(--teal); border-color:var(--teal); color:#fff; }
+.dday { font-size:11px; font-weight:600; opacity:0.7; display:block; }
+.dnum { font-size:18px; font-weight:800; display:block; }
+.hours-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; }
+.hcrd { border:2px solid #eee; border-radius:12px; background:#fff; cursor:pointer; padding:14px 8px; font-size:14px; font-weight:700; text-align:center; }
+.hcrd:hover { border-color:var(--teal); }
+.hcrd.sel { background:var(--teal); border-color:var(--teal); color:#fff; }
+.hcrd.full { background:#F3F4F6; color:#D1D5DB; cursor:not-allowed; border-color:#F3F4F6; }
+.fg { margin-bottom:16px; }
+.fg label { display:block; font-size:14px; font-weight:600; margin-bottom:8px; }
+.fg input { width:100%; padding:14px 16px; border-radius:12px; border:2px solid #ddd; font-size:15px; outline:none; font-family:inherit; }
+.fg input:focus { border-color:var(--teal); }
+.hint { font-size:12px; color:#6B7280; margin-top:4px; }
+.summary { background:#F9FAFB; border-radius:14px; padding:16px; margin-bottom:20px; }
+.srow { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee; font-size:14px; }
+.srow:last-child { border:none; }
+.slbl { color:#6B7280; }
+.sval { font-weight:700; }
+.btnm { width:100%; background:var(--teal); color:#fff; border:none; border-radius:14px; padding:16px; font-size:16px; font-weight:700; cursor:pointer; margin-bottom:12px; font-family:inherit; }
+.btnm:disabled { opacity:0.4; cursor:not-allowed; }
+.btnb { width:100%; background:#F3F4F6; color:#6B7280; border:none; border-radius:14px; padding:14px; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit; }
+.success { display:none; text-align:center; padding:40px 20px; }
+.sico { font-size:64px; margin-bottom:16px; }
+.stit { font-size:24px; font-weight:800; color:var(--teal); margin-bottom:8px; }
+.ssub { font-size:15px; color:#6B7280; margin-bottom:24px; }
+.btnwa { background:#25D366; color:#fff; border:none; border-radius:14px; padding:16px 24px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; }
+footer { text-align:center; padding:20px; color:#9CA3AF; font-size:12px; }
 </style>
 </head>
 <body>
-
-<img id="salon-photo" class="salon-photo" src="" alt="">
+<img id="spho" class="salon-photo" src="" alt="">
 <div class="salon-header">
-  <div class="salon-name" id="salon-name">Cargando...</div>
-  <div class="salon-info" id="salon-info">Reserva tu cita online</div>
+  <div class="salon-name" id="snom">Cargando...</div>
+  <div class="salon-info" id="sinf">Reserva tu cita online</div>
 </div>
-
 <div class="steps-bar">
-  <div class="step-tab active" id="tab-1">1. Servicio</div>
-  <div class="step-tab" id="tab-2">2. Profesional</div>
-  <div class="step-tab" id="tab-3">3. Fecha</div>
-  <div class="step-tab" id="tab-4">4. Hora</div>
-  <div class="step-tab" id="tab-5">5. Datos</div>
+  <div class="step-tab active" id="tab1">1. Servicio</div>
+  <div class="step-tab" id="tab2">2. Profesional</div>
+  <div class="step-tab" id="tab3">3. Fecha</div>
+  <div class="step-tab" id="tab4">4. Hora</div>
+  <div class="step-tab" id="tab5">5. Datos</div>
 </div>
-
-<!-- STEP 1 — SERVICIOS -->
-<div class="step-view active" id="step-1">
-  <div class="step-title">¿Qué servicios deseas?</div>
+<div class="step-view active" id="s1">
+  <div class="step-title">Que servicios deseas?</div>
   <div class="step-sub">Puedes seleccionar varios servicios</div>
-  <div class="services-grid" id="services-list"></div>
-  <button class="btn-next" id="btn-1" disabled onclick="goStep(2)">Continuar →</button>
+  <div id="sl"><div style="text-align:center;padding:20px;color:#6B7280">Cargando...</div></div>
+  <button class="btnm" id="b1" disabled onclick="go(2)">Continuar</button>
 </div>
-
-<!-- STEP 2 — PROFESIONAL -->
-<div class="step-view" id="step-2">
-  <div class="step-title">¿Con quién prefieres?</div>
+<div class="step-view" id="s2">
+  <div class="step-title">Con quien prefieres?</div>
   <div class="step-sub">Selecciona tu profesional</div>
-  <div class="services-grid" id="empleados-list"></div>
-  <button class="btn-next" id="btn-2" disabled onclick="goStep(3)">Continuar →</button>
-  <button class="btn-back" onclick="goStep(1)">← Volver</button>
+  <div id="el"><div style="text-align:center;padding:20px;color:#6B7280">Cargando...</div></div>
+  <button class="btnm" id="b2" disabled onclick="go(3)">Continuar</button>
+  <button class="btnb" onclick="go(1)">Volver</button>
 </div>
-
-<!-- STEP 3 — FECHA -->
-<div class="step-view" id="step-3">
-  <div class="step-title">¿Qué día prefieres?</div>
+<div class="step-view" id="s3">
+  <div class="step-title">Que dia prefieres?</div>
   <div class="step-sub">Selecciona una fecha disponible</div>
-  <div class="dates-grid" id="dates-list"></div>
-  <button class="btn-next" id="btn-3" disabled onclick="goStep(4)">Continuar →</button>
-  <button class="btn-back" onclick="goStep(2)">← Volver</button>
+  <div class="dates-grid" id="dl"></div>
+  <button class="btnm" id="b3" disabled onclick="go(4)">Continuar</button>
+  <button class="btnb" onclick="go(2)">Volver</button>
 </div>
-
-<!-- STEP 4 — HORA -->
-<div class="step-view" id="step-4">
-  <div class="step-title">¿A qué hora?</div>
+<div class="step-view" id="s4">
+  <div class="step-title">A que hora?</div>
   <div class="step-sub">Selecciona un horario disponible</div>
-  <div class="hours-grid" id="hours-list"></div>
-  <button class="btn-next" id="btn-4" disabled onclick="goStep(5)">Continuar →</button>
-  <button class="btn-back" onclick="goStep(3)">← Volver</button>
+  <div class="hours-grid" id="hl"></div>
+  <button class="btnm" id="b4" disabled onclick="go(5)">Continuar</button>
+  <button class="btnb" onclick="go(3)">Volver</button>
 </div>
-
-<!-- STEP 5 — DATOS -->
-<div class="step-view" id="step-5">
+<div class="step-view" id="s5">
   <div class="step-title">Tus datos</div>
   <div class="step-sub">Para confirmar tu cita</div>
-
-  <div class="summary-card">
-    <div class="summary-row"><span class="summary-label">Servicio(s)</span><span class="summary-value" id="sum-service">—</span></div>
-    <div class="summary-row"><span class="summary-label">Profesional</span><span class="summary-value" id="sum-empleado">—</span></div>
-    <div class="summary-row"><span class="summary-label">Fecha</span><span class="summary-value" id="sum-fecha">—</span></div>
-    <div class="summary-row"><span class="summary-label">Hora</span><span class="summary-value" id="sum-hora">—</span></div>
-    <div class="summary-row"><span class="summary-label">Duración</span><span class="summary-value" id="sum-duracion">—</span></div>
-    <div class="summary-row"><span class="summary-label">Precio total</span><span class="summary-value" id="sum-precio" style="color:var(--teal)">—</span></div>
+  <div class="summary">
+    <div class="srow"><span class="slbl">Servicio(s)</span><span class="sval" id="rsvc">-</span></div>
+    <div class="srow"><span class="slbl">Profesional</span><span class="sval" id="remp">-</span></div>
+    <div class="srow"><span class="slbl">Fecha</span><span class="sval" id="rfec">-</span></div>
+    <div class="srow"><span class="slbl">Hora</span><span class="sval" id="rhor">-</span></div>
+    <div class="srow"><span class="slbl">Precio</span><span class="sval" id="rpre" style="color:var(--teal)">-</span></div>
   </div>
-
-  <div class="form-group">
-    <label>Tu nombre completo *</label>
-    <input type="text" id="inp-nombre" placeholder="Ej: María García" oninput="checkConfirm()">
-  </div>
-  <div class="form-group">
-    <label>Tu WhatsApp *</label>
-    <input type="tel" id="inp-telefono" placeholder="+57 300 000 0000" oninput="checkConfirm()">
-  </div>
-  <div class="form-group">
-    <label>🎂 Fecha de cumpleaños (opcional)</label>
-    <input type="date" id="inp-birthday">
-    <div class="form-hint">Para enviarte un regalo especial el día de tu cumpleaños 🎁</div>
-  </div>
-  <div class="form-group">
-    <label>Notas (opcional)</label>
-    <input type="text" id="inp-notas" placeholder="Ej: primera vez, alergia a...">
-  </div>
-
-  <button class="btn-next" id="btn-confirmar" disabled onclick="confirmar()">✅ Confirmar cita</button>
-  <button class="btn-back" onclick="goStep(4)">← Volver</button>
+  <div class="fg"><label>Tu nombre completo *</label><input type="text" id="inam" placeholder="Maria Garcia" oninput="chk()"></div>
+  <div class="fg"><label>Tu WhatsApp *</label><input type="tel" id="itel" placeholder="+57 300 000 0000" oninput="chk()"></div>
+  <div class="fg"><label>Fecha de cumpleanos (opcional)</label><input type="date" id="ibdy"><div class="hint">Para enviarte un regalo especial</div></div>
+  <div class="fg"><label>Notas (opcional)</label><input type="text" id="inot" placeholder="Ej: primera vez..."></div>
+  <button class="btnm" id="b5" disabled onclick="conf()">Confirmar cita</button>
+  <button class="btnb" onclick="go(4)">Volver</button>
 </div>
-
-<!-- SUCCESS -->
-<div class="success-view" id="success">
-  <div class="success-icon">🎉</div>
-  <div class="success-title">¡Cita confirmada!</div>
-  <div class="success-sub" id="success-msg">Tu cita ha sido reservada exitosamente.</div>
-  <button class="btn-wa" id="btn-wa" onclick="openWA()">💬 Confirmar por WhatsApp</button>
+<div class="success" id="succ">
+  <div class="sico">🎉</div>
+  <div class="stit">Cita confirmada!</div>
+  <div class="ssub" id="smsg">Tu cita ha sido reservada.</div>
+  <button class="btnwa" onclick="openwa()">Confirmar por WhatsApp</button>
 </div>
-
-<footer>Powered by <strong>YaReserva</strong> · yareserva.app</footer>
-
+<footer>Powered by YaReserva</footer>
 <script>
-const SUPABASE_URL = 'https://axleatjquybypunogkui.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_9FQEJatmTxpUdRZzWA8xyg_yor0A_EN';
+var SU = 'https://axleatjquybypunogkui.supabase.co';
+var SK = 'sb_publishable_9FQEJatmTxpUdRZzWA8xyg_yor0A_EN';
+var SD = null;
+var S = {svcs:[],emp:null,date:null,dlbl:null,hour:null};
 
-let salonData = null;
-let selected = { services: [], empleado: null, date: null, dateLabel: null, hour: null };
-
-// ===== INIT =====
-window.onload = async function() {
-  const params = new URLSearchParams(window.location.search);
-  const slug = params.get('salon') || 'gregory2';
-
-  try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    const { data: salon } = await client.from('salons').select('*').eq('slug', slug).single();
-    
-    if (salon) {
-      salonData = salon;
-      document.getElementById('salon-name').textContent = salon.nom;
-      document.getElementById('salon-info').textContent = 
-        `${salon.secteur || 'Salón'} · ${salon.heure_ouverture || '08:00'} - ${salon.heure_fermeture || '20:00'}`;
-      
-      if (salon.photo_url) {
-        const img = document.getElementById('salon-photo');
-        img.src = salon.photo_url;
-        img.style.display = 'block';
-      }
+window.onload = function() {
+  var slug = new URLSearchParams(window.location.search).get('salon') || 'gregory2';
+  var cl = window.supabase.createClient(SU, SK);
+  cl.from('salons').select('*').eq('slug',slug).single().then(function(r) {
+    if (r.data) {
+      SD = r.data;
+      document.getElementById('snom').textContent = SD.nom;
+      document.getElementById('sinf').textContent = (SD.secteur||'Salon') + ' · ' + (SD.heure_ouverture||'08:00') + ' - ' + (SD.heure_fermeture||'20:00');
+      if (SD.photo_url) { var p=document.getElementById('spho'); p.src=SD.photo_url; p.style.display='block'; }
     }
-  } catch(e) { console.log('Init error:', e); }
-  
-  renderServices();
+    loadSvcs();
+  }).catch(function(){ loadSvcs(); });
 };
 
-// ===== NAVIGATION =====
-function goStep(n) {
-  document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.step-tab').forEach((t, i) => {
-    t.classList.toggle('active', i + 1 === n);
-    t.classList.toggle('done', i + 1 < n);
+function go(n) {
+  for(var i=1;i<=5;i++){
+    var sv=document.getElementById('s'+i); if(sv) sv.classList.remove('active');
+    var tb=document.getElementById('tab'+i);
+    if(tb){tb.classList.toggle('active',i===n);tb.classList.toggle('done',i<n);}
+  }
+  var el=document.getElementById('s'+n); if(el) el.classList.add('active');
+  if(n===2) loadEmps();
+  if(n===3) loadDates();
+  if(n===4) loadHours();
+  if(n===5) loadSum();
+  window.scrollTo(0,0);
+}
+
+function loadSvcs() {
+  var L=document.getElementById('sl');
+  if(!SD){L.innerHTML='<div class="card" onclick="tglS({id:\'x\',nom:\'Servicio demo\',duree:45,prix:25000},this)"><div><div class="card-name">Servicio demo</div><div class="card-meta">45 min · 25.000 COP</div></div><div class="card-check">✓</div></div>';return;}
+  window.supabase.createClient(SU,SK).from('services').select('*').eq('salon_id',SD.id).eq('actif',true).then(function(r){
+    var svcs=r.data||[];
+    if(!svcs.length){L.innerHTML='<div style="text-align:center;padding:20px">No hay servicios</div>';return;}
+    L.innerHTML=svcs.map(function(s){
+      return '<div class="card" id="sv'+s.id+'" onclick="tglS('+esc(s)+',this)"><div><div class="card-name">'+s.nom+'</div><div class="card-meta">'+s.duree+' min · '+(s.prix>0?s.prix.toLocaleString()+' COP':'A consultar')+'</div></div><div class="card-check">✓</div></div>';
+    }).join('');
   });
-  
-  const el = document.getElementById(`step-${n}`);
-  if (el) el.classList.add('active');
-  
-  if (n === 2) renderEmpleados();
-  if (n === 3) renderDates();
-  if (n === 4) renderHours();
-  if (n === 5) renderSummary();
-  
-  window.scrollTo(0, 0);
 }
 
-// ===== STEP 1 — SERVICES =====
-async function renderServices() {
-  const list = document.getElementById('services-list');
-  list.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7280">Cargando...</div>';
-  
-  try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    if (salonData) {
-      const { data: services } = await client.from('services')
-        .select('*').eq('salon_id', salonData.id).eq('actif', true).order('nom');
-      
-      if (services && services.length > 0) {
-        list.innerHTML = services.map(s => `
-          <div class="service-card" id="svc-${s.id}" onclick="toggleService(${JSON.stringify(s).replace(/"/g,'&quot;')}, this)">
-            <div>
-              <div class="service-name">${s.nom}</div>
-              <div class="service-meta">${s.duree} min · ${s.prix > 0 ? s.prix.toLocaleString() + ' COP' : 'A consultar'}</div>
-            </div>
-            <div class="service-check">✓</div>
-          </div>`).join('');
-        return;
-      }
-    }
-  } catch(e) { console.log('Services error:', e); }
-  
-  // Default services
-  list.innerHTML = `
-    <div class="service-card" onclick="toggleService({id:'1',nom:'Corte de cabello',duree:45,prix:25000}, this)">
-      <div><div class="service-name">Corte de cabello</div><div class="service-meta">45 min · 25.000 COP</div></div>
-      <div class="service-check">✓</div>
-    </div>
-    <div class="service-card" onclick="toggleService({id:'2',nom:'Manicure',duree:45,prix:20000}, this)">
-      <div><div class="service-name">Manicure</div><div class="service-meta">45 min · 20.000 COP</div></div>
-      <div class="service-check">✓</div>
-    </div>`;
+function esc(o){return JSON.stringify(o).replace(/"/g,"'");}
+
+function tglS(s,el){
+  var idx=-1;
+  for(var i=0;i<S.svcs.length;i++){if(S.svcs[i].id===s.id){idx=i;break;}}
+  if(idx>=0){S.svcs.splice(idx,1);el.classList.remove('sel');}
+  else{S.svcs.push(s);el.classList.add('sel');}
+  document.getElementById('b1').disabled=S.svcs.length===0;
 }
 
-function toggleService(service, el) {
-  const idx = selected.services.findIndex(s => s.id === service.id);
-  if (idx >= 0) {
-    selected.services.splice(idx, 1);
-    el.classList.remove('selected');
-  } else {
-    selected.services.push(service);
-    el.classList.add('selected');
-  }
-  document.getElementById('btn-1').disabled = selected.services.length === 0;
-}
-
-// ===== STEP 2 — EMPLEADOS =====
-async function renderEmpleados() {
-  const list = document.getElementById('empleados-list');
-  list.innerHTML = '<div style="text-align:center;padding:20px;color:#6B7280">Cargando...</div>';
-  
-  const sinPref = `<div class="service-card selected" id="emp-sinpref" onclick="selectEmpleado(null, this)">
-    <div style="display:flex;align-items:center;gap:12px">
-      <div style="width:44px;height:44px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:22px">🎲</div>
-      <div><div class="service-name">Sin preferencia</div><div class="service-meta">Cualquier profesional disponible</div></div>
-    </div>
-    <div class="service-check" style="background:var(--teal);border-color:var(--teal);color:#fff">✓</div>
-  </div>`;
-  
-  try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    if (salonData) {
-      const { data: emps } = await client.from('employes')
-        .select('*').eq('salon_id', salonData.id).eq('actif', true);
-      
-      if (emps && emps.length > 0) {
-        const cards = emps.map(e => `
-          <div class="service-card" onclick="selectEmpleado(${JSON.stringify(e).replace(/"/g,'&quot;')}, this)">
-            <div style="display:flex;align-items:center;gap:12px">
-              ${e.photo_url 
-                ? `<img src="${e.photo_url}" style="width:44px;height:44px;border-radius:50%;object-fit:cover">`
-                : `<div style="width:44px;height:44px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">${e.nom[0].toUpperCase()}</div>`}
-              <div><div class="service-name">${e.nom}</div>${e.especialidad ? `<div class="service-meta">${e.especialidad}</div>` : ''}</div>
-            </div>
-            <div class="service-check">✓</div>
-          </div>`).join('');
-        
-        list.innerHTML = sinPref + cards;
-        selected.empleado = null;
-        document.getElementById('btn-2').disabled = false;
-        return;
-      }
-    }
-  } catch(e) { console.log('Empleados error:', e); }
-  
-  // No employees
-  list.innerHTML = sinPref;
-  selected.empleado = null;
-  document.getElementById('btn-2').disabled = false;
-}
-
-function selectEmpleado(emp, el) {
-  document.querySelectorAll('#empleados-list .service-card').forEach(c => {
-    c.classList.remove('selected');
-    c.querySelector('.service-check').style.background = '';
-    c.querySelector('.service-check').style.borderColor = '';
-    c.querySelector('.service-check').style.color = 'transparent';
+function loadEmps(){
+  var L=document.getElementById('el');
+  S.emp=null;
+  document.getElementById('b2').disabled=false;
+  var sin='<div class="card sel" onclick="pickE(null,this)"><div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:44px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:22px">🎲</div><div><div class="card-name">Sin preferencia</div><div class="card-meta">Cualquier profesional</div></div></div><div class="card-check" style="background:var(--teal);border-color:var(--teal);color:#fff">✓</div></div>';
+  if(!SD){L.innerHTML=sin;return;}
+  window.supabase.createClient(SU,SK).from('employes').select('*').eq('salon_id',SD.id).eq('actif',true).then(function(r){
+    var emps=r.data||[];
+    var html=sin;
+    emps.forEach(function(e){
+      var av=e.photo_url?'<img src="'+e.photo_url+'" style="width:44px;height:44px;border-radius:50%;object-fit:cover">':'<div style="width:44px;height:44px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">'+e.nom[0].toUpperCase()+'</div>';
+      html+='<div class="card" onclick="pickE('+esc(e)+',this)"><div style="display:flex;align-items:center;gap:12px">'+av+'<div><div class="card-name">'+e.nom+'</div>'+(e.especialidad?'<div class="card-meta">'+e.especialidad+'</div>':'')+'</div></div><div class="card-check">✓</div></div>';
+    });
+    L.innerHTML=html;
   });
-  el.classList.add('selected');
-  el.querySelector('.service-check').style.background = 'var(--teal)';
-  el.querySelector('.service-check').style.borderColor = 'var(--teal)';
-  el.querySelector('.service-check').style.color = '#fff';
-  selected.empleado = emp;
-  document.getElementById('btn-2').disabled = false;
 }
 
-// ===== STEP 3 — DATES =====
-function renderDates() {
-  const list = document.getElementById('dates-list');
-  const days = ['Do','Lu','Ma','Mi','Ju','Vi','Sá'];
-  const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  
-  let closedDays = [0];
-  if (salonData && salonData.dias_apertura) {
-    try {
-      const dias = JSON.parse(salonData.dias_apertura);
-      const map = { dom:0, lun:1, mar:2, mie:3, jue:4, vie:5, sab:6 };
-      closedDays = [];
-      Object.keys(map).forEach(k => { if (!dias[k]) closedDays.push(map[k]); });
-    } catch(e) {}
-  }
-  
-  let html = '';
-  let count = 0;
-  for (let i = 1; i <= 30 && count < 21; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    if (closedDays.includes(d.getDay())) continue;
-    count++;
-    const dateStr = d.toISOString().split('T')[0];
-    const label = `${d.getDate()} ${months[d.getMonth()]}`;
-    html += `<div class="date-btn" data-date="${dateStr}" data-label="${label}">
-      <span class="date-day">${days[d.getDay()]}</span>
-      <span class="date-num">${d.getDate()}</span>
-    </div>`;
-  }
-  list.innerHTML = html;
+function pickE(emp,el){
+  document.querySelectorAll('#el .card').forEach(function(c){
+    c.classList.remove('sel');
+    var ck=c.querySelector('.card-check');
+    if(ck){ck.style.background='';ck.style.borderColor='';ck.style.color='';}
+  });
+  el.classList.add('sel');
+  var ck=el.querySelector('.card-check');
+  if(ck){ck.style.background='var(--teal)';ck.style.borderColor='var(--teal)';ck.style.color='#fff';}
+  S.emp=emp;
+  document.getElementById('b2').disabled=false;
 }
 
-// selectDate handled by event delegation above
+function loadDates(){
+  var L=document.getElementById('dl');
+  var dn=['Do','Lu','Ma','Mi','Ju','Vi','Sa'];
+  var mn=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  var today=new Date(); today.setHours(0,0,0,0);
+  var closed=[0];
+  if(SD&&SD.dias_apertura){try{var d=JSON.parse(SD.dias_apertura);var m={dom:0,lun:1,mar:2,mie:3,jue:4,vie:5,sab:6};closed=[];Object.keys(m).forEach(function(k){if(!d[k])closed.push(m[k]);});}catch(e){}}
+  var html='';var cnt=0;
+  for(var i=1;i<=60&&cnt<21;i++){
+    var d=new Date(today.getTime());d.setDate(today.getDate()+i);
+    if(closed.indexOf(d.getDay())>=0)continue;
+    cnt++;
+    var ds=d.toISOString().split('T')[0];
+    var lbl=d.getDate()+' '+mn[d.getMonth()];
+    html+='<div class="dcrd" onclick="pickD(\''+ds+'\',\''+lbl+'\',this)"><span class="dday">'+dn[d.getDay()]+'</span><span class="dnum">'+d.getDate()+'</span></div>';
+  }
+  L.innerHTML=html||'<div style="text-align:center;padding:20px;color:#E74C3C">No hay fechas</div>';
+}
 
-// ===== STEP 4 — HOURS =====
-async function renderHours() {
-  const list = document.getElementById('hours-list');
-  list.innerHTML = '<div style="grid-column:span 3;text-align:center;padding:20px;color:#6B7280">Cargando horarios...</div>';
-  
-  let startHour = 8, endHour = 20, slot = 30;
-  
-  if (salonData) {
-    if (salonData.heure_ouverture) startHour = parseInt(salonData.heure_ouverture) || 8;
-    if (salonData.heure_fermeture) endHour = parseInt(salonData.heure_fermeture) || 20;
-    if (salonData.duracion_slot) slot = parseInt(salonData.duracion_slot) || 30;
+function pickD(ds,lbl,el){
+  document.querySelectorAll('.dcrd').forEach(function(b){b.classList.remove('sel');});
+  el.classList.add('sel');
+  S.date=ds; S.dlbl=lbl;
+  document.getElementById('b3').disabled=false;
+}
+
+function loadHours(){
+  var L=document.getElementById('hl');
+  L.innerHTML='<div style="grid-column:span 3;text-align:center;padding:20px;color:#6B7280">Cargando...</div>';
+  var sh=8,eh=20,sl=30;
+  if(SD){
+    if(SD.heure_ouverture) sh=parseInt(SD.heure_ouverture)||8;
+    if(SD.heure_fermeture) eh=parseInt(SD.heure_fermeture)||20;
+    if(SD.duracion_slot) sl=parseInt(SD.duracion_slot)||30;
   }
-  
-  if (startHour >= endHour || slot <= 0) { startHour = 8; endHour = 20; slot = 30; }
-  
-  const hours = [];
-  for (let h = startHour; h < endHour; h++) {
-    for (let m = 0; m < 60; m += slot) {
-      hours.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
-    }
-  }
-  
-  let taken = {};
-  let capacidad = salonData?.capacidad || 1;
-  
-  try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    if (salonData && selected.date) {
-      const { data: rdvs } = await client.from('reservations')
-        .select('heure_rdv').eq('salon_id', salonData.id).eq('date_rdv', selected.date);
-      if (rdvs) rdvs.forEach(r => {
-        const h = r.heure_rdv?.slice(0,5);
-        if (h) taken[h] = (taken[h] || 0) + 1;
-      });
-    }
-  } catch(e) {}
-  
-  list.innerHTML = hours.map(h => {
-    const cnt = taken[h] || 0;
-    const full = cnt >= capacidad;
-    const spots = capacidad - cnt;
-    const lbl = full ? `${h}<br><small style="font-size:10px">Completo</small>` 
-               : (capacidad > 1 && spots < capacidad) ? `${h}<br><small style="font-size:10px">${spots} lugar${spots>1?'es':''}</small>` 
-               : h;
-    return `<button class="hour-btn${full?' taken':''}" ${full?'disabled':''} data-hour="${h}">${lbl}</button>`;
+  if(sh>=eh){sh=8;eh=20;} if(sl<=0)sl=30;
+  var hrs=[];
+  for(var h=sh;h<eh;h++){for(var m=0;m<60;m+=sl){hrs.push((h<10?'0':'')+h+':'+(m<10?'0':'')+m);}}
+  if(!SD||!S.date){showH(L,hrs,{},1);return;}
+  window.supabase.createClient(SU,SK).from('reservations').select('heure_rdv').eq('salon_id',SD.id).eq('date_rdv',S.date).then(function(r){
+    var tk={};(r.data||[]).forEach(function(x){if(x.heure_rdv){var hh=x.heure_rdv.slice(0,5);tk[hh]=(tk[hh]||0)+1;}});
+    showH(L,hrs,tk,SD.capacidad||1);
+  }).catch(function(){showH(L,hrs,{},1);});
+}
+
+function showH(L,hrs,tk,cap){
+  if(!hrs.length){L.innerHTML='<div style="grid-column:span 3;text-align:center;padding:20px;color:#E74C3C">No hay horarios</div>';return;}
+  L.innerHTML=hrs.map(function(h){
+    var c=tk[h]||0,full=c>=cap,sp=cap-c;
+    var lbl=h+(full?'<br><small>Completo</small>':(cap>1&&sp<cap?'<br><small>'+sp+' lugar'+(sp>1?'es':'')+'</small>':''));
+    return '<button class="hcrd'+(full?' full':'')+'"'+(full?' disabled':'')+' onclick="pickH(\''+h+'\',this)">'+lbl+'</button>';
   }).join('');
 }
 
-// ===== UNIFIED EVENT DELEGATION =====
-document.addEventListener('click', function(e) {
-  // Date selection
-  const dateBtn = e.target.closest('.date-btn');
-  if (dateBtn && dateBtn.getAttribute('data-date')) {
-    document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
-    dateBtn.classList.add('selected');
-    selected.date = dateBtn.getAttribute('data-date');
-    selected.dateLabel = dateBtn.getAttribute('data-label');
-    document.getElementById('btn-3').disabled = false;
-    return;
+function pickH(h,el){
+  if(el.classList.contains('full'))return;
+  document.querySelectorAll('.hcrd').forEach(function(b){b.classList.remove('sel');});
+  el.classList.add('sel');
+  S.hour=h;
+  document.getElementById('b4').disabled=false;
+}
+
+function loadSum(){
+  var tp=0;S.svcs.forEach(function(s){tp+=s.prix||0;});
+  document.getElementById('rsvc').textContent=S.svcs.map(function(s){return s.nom;}).join(' + ')||'-';
+  document.getElementById('remp').textContent=S.emp?S.emp.nom:'Sin preferencia';
+  document.getElementById('rfec').textContent=S.dlbl||'-';
+  document.getElementById('rhor').textContent=S.hour||'-';
+  document.getElementById('rpre').textContent=tp>0?tp.toLocaleString()+' COP':'A consultar';
+}
+
+function chk(){
+  var n=document.getElementById('inam').value.trim();
+  var t=document.getElementById('itel').value.trim();
+  document.getElementById('b5').disabled=n.length<2||t.replace(/\D/g,'').length<7;
+}
+
+function conf(){
+  var nom=document.getElementById('inam').value.trim();
+  var tel=document.getElementById('itel').value.trim();
+  var bdy=document.getElementById('ibdy').value||null;
+  var not=document.getElementById('inot').value.trim();
+  if(!nom||!tel)return;
+  if(SD){
+    var cl=window.supabase.createClient(SU,SK);
+    var sn=S.svcs.map(function(s){return s.nom;}).join(' + ');
+    cl.from('reservations').insert([{salon_id:SD.id,client_nom:nom,client_telephone:tel,service:sn,date_rdv:S.date,heure_rdv:S.hour,notes:not,statut:'confirmada',employe_nom:S.emp?S.emp.nom:null}]).then(function(){
+      cl.from('clients').select('id').eq('salon_id',SD.id).eq('telephone',tel).single().then(function(r){
+        if(r.data){if(bdy)cl.from('clients').update({date_naissance:bdy}).eq('id',r.data.id);}
+        else{cl.from('clients').insert([{salon_id:SD.id,nom:nom,telephone:tel,date_naissance:bdy}]);}
+      });
+      var msg='Nueva reserva en '+SD.nom+'!\n'+nom+'\n'+sn+'\n'+S.dlbl+' · '+S.hour+'\n'+tel;
+      var ph=(SD.whatsapp||'').replace(/\D/g,'');
+      if(ph)fetch('https://api.callmebot.com/whatsapp.php?phone='+ph+'&text='+encodeURIComponent(msg)+'&apikey=4681566',{mode:'no-cors'});
+    });
   }
-  
-  // Hour selection
-  const hourBtn = e.target.closest('.hour-btn');
-  if (hourBtn && !hourBtn.disabled && !hourBtn.classList.contains('taken')) {
-    const hour = hourBtn.getAttribute('data-hour');
-    if (hour) {
-      document.querySelectorAll('.hour-btn').forEach(b => b.classList.remove('selected'));
-      hourBtn.classList.add('selected');
-      selected.hour = hour;
-      document.getElementById('btn-4').disabled = false;
-    }
-    return;
-  }
-});
-
-// ===== STEP 5 — SUMMARY =====
-function renderSummary() {
-  const svcs = selected.services;
-  const totalDuree = svcs.reduce((t,s) => t + (s.duree||0), 0);
-  const totalPrix = svcs.reduce((t,s) => t + (s.prix||0), 0);
-  
-  document.getElementById('sum-service').textContent = svcs.map(s=>s.nom).join(' + ') || '—';
-  document.getElementById('sum-empleado').textContent = selected.empleado?.nom || 'Sin preferencia';
-  document.getElementById('sum-fecha').textContent = selected.dateLabel || '—';
-  document.getElementById('sum-hora').textContent = selected.hour || '—';
-  document.getElementById('sum-duracion').textContent = totalDuree >= 60 
-    ? `${Math.floor(totalDuree/60)}h${totalDuree%60>0?' '+totalDuree%60+'min':''}` 
-    : `${totalDuree} min`;
-  document.getElementById('sum-precio').textContent = totalPrix > 0 
-    ? totalPrix.toLocaleString() + ' COP' : 'A consultar';
+  document.querySelectorAll('.step-view').forEach(function(v){v.classList.remove('active');});
+  document.getElementById('succ').style.display='block';
+  var sn=S.svcs.map(function(s){return s.nom;}).join(' + ');
+  document.getElementById('smsg').textContent=sn+' · '+S.dlbl+' · '+S.hour;
+  window.scrollTo(0,0);
 }
 
-function checkConfirm() {
-  const n = document.getElementById('inp-nombre').value.trim();
-  const t = document.getElementById('inp-telefono').value.trim();
-  document.getElementById('btn-confirmar').disabled = n.length < 2 || t.length < 7;
-}
-
-// ===== CONFIRMAR =====
-async function confirmar() {
-  const nombre = document.getElementById('inp-nombre').value.trim();
-  const telefono = document.getElementById('inp-telefono').value.trim();
-  const birthday = document.getElementById('inp-birthday').value || null;
-  const notas = document.getElementById('inp-notas').value.trim();
-  
-  if (!nombre || !telefono) return;
-  
-  try {
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    if (salonData) {
-      const svcNom = selected.services.map(s=>s.nom).join(' + ');
-      
-      await client.from('reservations').insert([{
-        salon_id: salonData.id,
-        client_nom: nombre,
-        client_telephone: telefono,
-        service: svcNom,
-        date_rdv: selected.date,
-        heure_rdv: selected.hour,
-        notes: notas,
-        statut: 'confirmada',
-        employe_nom: selected.empleado?.nom || null
-      }]);
-      
-      // Save/update client with birthday
-      const { data: existing } = await client.from('clients')
-        .select('id').eq('salon_id', salonData.id).eq('telephone', telefono).single();
-      
-      if (existing) {
-        if (birthday) await client.from('clients').update({ date_naissance: birthday }).eq('id', existing.id);
-      } else {
-        await client.from('clients').insert([{
-          salon_id: salonData.id, nom: nombre, telephone: telefono,
-          date_naissance: birthday || null
-        }]);
-      }
-      
-      // WhatsApp to salon
-      const msg = `🆕 Nueva reserva en ${salonData.nom}!\n👤 ${nombre}\n💅 ${svcNom}\n📅 ${selected.dateLabel}\n⏰ ${selected.hour}\n📱 ${telefono}${selected.empleado ? '\n👩‍💼 ' + selected.empleado.nom : ''}`;
-      const encoded = encodeURIComponent(msg);
-      let phone = (salonData.whatsapp || '').replace(/\D/g,'');
-      if (phone) await fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encoded}&apikey=4681566`, {mode:'no-cors'});
-    }
-  } catch(e) { console.log('Confirmar error:', e); }
-  
-  // Show success
-  document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.step-tab').forEach(t => t.classList.add('done'));
-  document.getElementById('success').style.display = 'block';
-  
-  const svcNom = selected.services.map(s=>s.nom).join(' + ');
-  document.getElementById('success-msg').textContent = 
-    `${svcNom} · ${selected.dateLabel} · ${selected.hour}`;
-  
-  window.scrollTo(0, 0);
-}
-
-function openWA() {
-  const salonNom = salonData?.nom || 'el salón';
-  const svcNom = selected.services.map(s=>s.nom).join(' + ');
-  const msg = `Hola! Acabo de reservar mi cita en ${salonNom}.\n💅 ${svcNom}\n📅 ${selected.dateLabel}\n⏰ ${selected.hour}\n¡Gracias! 😊`;
-  let phone = (salonData?.whatsapp || '').replace(/\D/g,'');
-  if (!phone.startsWith('57')) phone = '57' + phone;
-  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+function openwa(){
+  var sn=S.svcs.map(function(s){return s.nom;}).join(' + ');
+  var msg='Hola! Acabo de reservar en '+(SD?SD.nom:'el salon')+'. '+sn+' · '+S.dlbl+' · '+S.hour;
+  var ph=SD?(SD.whatsapp||'').replace(/\D/g,''):'';
+  if(!ph.startsWith('57'))ph='57'+ph;
+  window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(msg),'_blank');
 }
 </script>
 </body>
 </html>
- 
