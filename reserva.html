@@ -422,7 +422,7 @@ async function renderHours() {
     const lbl = full ? `${h}<br><small style="font-size:10px">Completo</small>` 
                : (capacidad > 1 && spots < capacidad) ? `${h}<br><small style="font-size:10px">${spots} lugar${spots>1?'es':''}</small>` 
                : h;
-    return `<button class="hour-btn${full?' taken':''}" ${full?'disabled':''} onclick="selectHour('${h}',this)">${lbl}</button>`;
+    return `<button class="hour-btn${full?' taken':''}" ${full?'disabled':''} data-hour="${h}">${lbl}</button>`;
   }).join('');
 }
 
@@ -432,6 +432,15 @@ function selectHour(hour, el) {
   selected.hour = hour;
   document.getElementById('btn-4').disabled = false;
 }
+
+// Event delegation for hours
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.hour-btn');
+  if (btn && !btn.disabled && !btn.classList.contains('taken')) {
+    const hour = btn.getAttribute('data-hour');
+    if (hour) selectHour(hour, btn);
+  }
+});
 
 // ===== STEP 5 — SUMMARY =====
 function renderSummary() {
