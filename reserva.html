@@ -362,7 +362,7 @@ function renderDates() {
     count++;
     const dateStr = d.toISOString().split('T')[0];
     const label = `${d.getDate()} ${months[d.getMonth()]}`;
-    html += `<div class="date-btn" onclick="selectDate('${dateStr}','${label}',this)">
+    html += `<div class="date-btn" data-date="${dateStr}" data-label="${label}">
       <span class="date-day">${days[d.getDay()]}</span>
       <span class="date-num">${d.getDate()}</span>
     </div>`;
@@ -370,13 +370,7 @@ function renderDates() {
   list.innerHTML = html;
 }
 
-function selectDate(dateStr, label, el) {
-  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
-  el.classList.add('selected');
-  selected.date = dateStr;
-  selected.dateLabel = label;
-  document.getElementById('btn-3').disabled = false;
-}
+// selectDate handled by event delegation above
 
 // ===== STEP 4 — HOURS =====
 async function renderHours() {
@@ -426,19 +420,30 @@ async function renderHours() {
   }).join('');
 }
 
-function selectHour(hour, el) {
-  document.querySelectorAll('.hour-btn').forEach(b => b.classList.remove('selected'));
-  el.classList.add('selected');
-  selected.hour = hour;
-  document.getElementById('btn-4').disabled = false;
-}
-
-// Event delegation for hours
+// ===== UNIFIED EVENT DELEGATION =====
 document.addEventListener('click', function(e) {
-  const btn = e.target.closest('.hour-btn');
-  if (btn && !btn.disabled && !btn.classList.contains('taken')) {
-    const hour = btn.getAttribute('data-hour');
-    if (hour) selectHour(hour, btn);
+  // Date selection
+  const dateBtn = e.target.closest('.date-btn');
+  if (dateBtn && dateBtn.getAttribute('data-date')) {
+    document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
+    dateBtn.classList.add('selected');
+    selected.date = dateBtn.getAttribute('data-date');
+    selected.dateLabel = dateBtn.getAttribute('data-label');
+    document.getElementById('btn-3').disabled = false;
+    return;
+  }
+  
+  // Hour selection
+  const hourBtn = e.target.closest('.hour-btn');
+  if (hourBtn && !hourBtn.disabled && !hourBtn.classList.contains('taken')) {
+    const hour = hourBtn.getAttribute('data-hour');
+    if (hour) {
+      document.querySelectorAll('.hour-btn').forEach(b => b.classList.remove('selected'));
+      hourBtn.classList.add('selected');
+      selected.hour = hour;
+      document.getElementById('btn-4').disabled = false;
+    }
+    return;
   }
 });
 
