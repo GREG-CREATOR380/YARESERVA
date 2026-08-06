@@ -604,10 +604,14 @@ async function renderHours(dateStr) {
   let slotDuration = 30;
   
   if (salonData) {
-    if (salonData.heure_ouverture) startHour = parseInt(salonData.heure_ouverture.split(':')[0]);
-    if (salonData.heure_fermeture) endHour = parseInt(salonData.heure_fermeture.split(':')[0]);
-    if (salonData.duracion_slot) slotDuration = salonData.duracion_slot;
+    if (salonData.heure_ouverture) startHour = parseInt(salonData.heure_ouverture.split(':')[0]) || 8;
+    if (salonData.heure_fermeture) endHour = parseInt(salonData.heure_fermeture.split(':')[0]) || 20;
+    if (salonData.duracion_slot) slotDuration = parseInt(salonData.duracion_slot) || 30;
   }
+
+  // Safety check
+  if (startHour >= endHour) { startHour = 8; endHour = 20; }
+  if (slotDuration <= 0) slotDuration = 30;
   
   const hours = [];
   for (let h = startHour; h < endHour; h++) {
@@ -615,9 +619,10 @@ async function renderHours(dateStr) {
       hours.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
     }
   }
-  
+
   // Show loading
-  document.getElementById('hours-grid').innerHTML = '<div style="grid-column:span 3;text-align:center;padding:20px;color:#6B7280">Cargando horarios...</div>';
+  const grid = document.getElementById('hours-grid');
+  grid.innerHTML = '<div style="grid-column:span 3;text-align:center;padding:20px;color:#6B7280">Cargando horarios...</div>';
 
   let hoursCount = {};
   let capacidad = 1;
@@ -625,23 +630,25 @@ async function renderHours(dateStr) {
   try {
     const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     if (salonData) {
-      // Get capacity from salon
       capacidad = salonData.capacidad || 1;
       
-      // Count reservations per hour
       const { data: rdvs } = await client.from('reservations')
         .select('heure_rdv').eq('salon_id', salonData.id).eq('date_rdv', dateStr);
       
       if (rdvs) {
         rdvs.forEach(r => {
-          const h = r.heure_rdv.slice(0,5);
-          hoursCount[h] = (hoursCount[h] || 0) + 1;
+          const h = r.heure_rdv ? r.heure_rdv.slice(0,5) : null;
+          if (h) hoursCount[h] = (hoursCount[h] || 0) + 1;
         });
       }
     }
-  } catch(e) {}
+  } catch(e) { console.log('Hours error:', e); }
   
-  const grid = document.getElementById('hours-grid');
+  if (hours.length === 0) {
+    grid.innerHTML = '<div style="grid-column:span 3;text-align:center;padding:20px;color:#E74C3C">No hay horarios disponibles</div>';
+    return;
+  }
+
   grid.innerHTML = hours.map(h => {
     const count = hoursCount[h] || 0;
     const isFull = count >= capacidad;
