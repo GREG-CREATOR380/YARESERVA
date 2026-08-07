@@ -74,6 +74,7 @@ footer { text-align:center; padding:20px; color:#9CA3AF; font-size:12px; }
   <div class="stit">Que servicios deseas?</div>
   <div class="ssub">Puedes seleccionar varios</div>
   <div id="SL"><p style="text-align:center;padding:20px;color:#6B7280">Cargando...</p></div>
+  <div id="svc-summary" style="display:none;background:#E6F4F1;border-radius:12px;padding:14px 16px;margin-bottom:12px;border:2px solid var(--teal)"></div>
   <button class="bm" id="b1" disabled onclick="go(2)">Continuar</button>
 </div>
 <div class="sview" id="v2">
@@ -162,6 +163,19 @@ function tgl(s,el){
   var idx=-1;for(var i=0;i<SS.svcs.length;i++){if(SS.svcs[i].id===s.id){idx=i;break;}}
   if(idx>=0){SS.svcs.splice(idx,1);el.classList.remove('on');}else{SS.svcs.push(s);el.classList.add('on');}
   document.getElementById('b1').disabled=SS.svcs.length===0;
+  // Update summary
+  var total=0;var dur=0;
+  SS.svcs.forEach(function(s){total+=s.prix||0;dur+=s.duree||0;});
+  var sum=document.getElementById('svc-summary');
+  if(SS.svcs.length>0){
+    sum.style.display='block';
+    sum.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center">'
+      +'<span style="font-size:13px;color:#6B7280">'+SS.svcs.length+' servicio(s) · '+dur+' min</span>'
+      +'<span style="font-size:16px;font-weight:800;color:var(--teal)">'+total.toLocaleString()+' COP</span>'
+      +'</div>';
+  } else {
+    sum.style.display='none';
+  }
 }
 
 function loadE(){
