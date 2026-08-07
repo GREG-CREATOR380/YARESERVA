@@ -973,6 +973,19 @@
     <div class="form-group"><label>Nombre *</label><input type="text" id="emp-nom" placeholder="Ej: Diana García"></div>
     <div class="form-group"><label>Especialidad</label><input type="text" id="emp-especialidad" placeholder="Ej: Colorista, Manicurista..."></div>
     <div class="form-group"><label>Foto (URL opcional)</label><input type="url" id="emp-photo" placeholder="https://..."></div>
+    <div class="form-group">
+      <label style="margin-bottom:10px;display:block">Días de trabajo</label>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center">
+        <div><div style="font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px">Lun</div><input type="checkbox" id="emp-lun" checked style="width:18px;height:18px;accent-color:#0D6E5E"></div>
+        <div><div style="font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px">Mar</div><input type="checkbox" id="emp-mar" checked style="width:18px;height:18px;accent-color:#0D6E5E"></div>
+        <div><div style="font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px">Mié</div><input type="checkbox" id="emp-mie" checked style="width:18px;height:18px;accent-color:#0D6E5E"></div>
+        <div><div style="font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px">Jue</div><input type="checkbox" id="emp-jue" checked style="width:18px;height:18px;accent-color:#0D6E5E"></div>
+        <div><div style="font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px">Vie</div><input type="checkbox" id="emp-vie" checked style="width:18px;height:18px;accent-color:#0D6E5E"></div>
+        <div><div style="font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px">Sáb</div><input type="checkbox" id="emp-sab" checked style="width:18px;height:18px;accent-color:#0D6E5E"></div>
+        <div><div style="font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px">Dom</div><input type="checkbox" id="emp-dom" style="width:18px;height:18px;accent-color:#0D6E5E"></div>
+      </div>
+      <div style="font-size:12px;color:#6B7280;margin-top:8px">💡 Cocha los días que trabaja este empleado</div>
+    </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('modal-empleado')">Cancelar</button>
       <button class="btn-confirm" onclick="saveEmpleado()">Guardar empleado</button>
@@ -1928,6 +1941,17 @@ async function saveEmpleado() {
   
   if (!nom) { alert('Por favor ingresa el nombre del empleado.'); return; }
   
+  // Get jours_travail
+  const jours = {
+    lun: document.getElementById('emp-lun').checked,
+    mar: document.getElementById('emp-mar').checked,
+    mie: document.getElementById('emp-mie').checked,
+    jue: document.getElementById('emp-jue').checked,
+    vie: document.getElementById('emp-vie').checked,
+    sab: document.getElementById('emp-sab').checked,
+    dom: document.getElementById('emp-dom').checked,
+  };
+  
   try {
     const client = getSupabase();
     const { data: { user } } = await client.auth.getUser();
@@ -1938,7 +1962,8 @@ async function saveEmpleado() {
     
     const { error } = await client.from('employes').insert([{
       salon_id: salon.id,
-      nom, especialidad, photo_url: photo || null, actif: true
+      nom, especialidad, photo_url: photo || null, actif: true,
+      jours_travail: JSON.stringify(jours)
     }]);
     
     if (!error) {
@@ -1946,6 +1971,9 @@ async function saveEmpleado() {
       document.getElementById('emp-nom').value = '';
       document.getElementById('emp-especialidad').value = '';
       document.getElementById('emp-photo').value = '';
+      // Reset checkboxes
+      ['lun','mar','mie','jue','vie','sab'].forEach(d => document.getElementById('emp-'+d).checked = true);
+      document.getElementById('emp-dom').checked = false;
       await loadEmpleados();
       alert('✅ Empleado agregado!');
     }
