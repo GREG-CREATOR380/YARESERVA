@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YaReserva — Trouvez votre salon en France</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#F9FAFB; }
+:root { --teal:#0D6E5E; --orange:#FF6B35; }
+
+.header { background:var(--teal); padding:16px 20px; display:flex; align-items:center; justify-content:space-between; }
+.logo { font-size:22px; font-weight:900; color:#fff; }
+.logo span { color:var(--orange); }
+.header-sub { font-size:12px; color:rgba(255,255,255,0.7); margin-top:2px; }
+.flag { font-size:20px; }
+
+.search-bar { background:#fff; padding:16px 20px; border-bottom:1px solid #EFEFEF; display:flex; gap:10px; flex-wrap:wrap; }
+.search-input { flex:1; min-width:200px; padding:10px 16px; border:2px solid #eee; border-radius:10px; font-size:14px; outline:none; font-family:inherit; }
+.search-input:focus { border-color:var(--teal); }
+.filter-select { padding:10px 14px; border:2px solid #eee; border-radius:10px; font-size:14px; outline:none; font-family:inherit; background:#fff; }
+.filter-select:focus { border-color:var(--teal); }
+
+.container { display:grid; grid-template-columns:360px 1fr; height:calc(100vh - 130px); }
+
+.salons-list { overflow-y:auto; border-right:1px solid #EFEFEF; background:#fff; }
+.salons-count { padding:16px 20px; font-size:13px; color:#6B7280; border-bottom:1px solid #EFEFEF; }
+.salons-count strong { color:var(--teal); }
+
+.salon-card { padding:16px 20px; border-bottom:1px solid #F3F4F6; cursor:pointer; transition:background .15s; }
+.salon-card:hover { background:#F9FAFB; }
+.salon-card.active { background:#E6F4F1; border-left:4px solid var(--teal); }
+.salon-top { display:flex; gap:12px; align-items:flex-start; }
+.salon-photo { width:56px; height:56px; border-radius:10px; object-fit:cover; flex-shrink:0; background:#F3F4F6; display:flex; align-items:center; justify-content:center; font-size:24px; }
+.salon-photo img { width:56px; height:56px; border-radius:10px; object-fit:cover; }
+.salon-info { flex:1; }
+.salon-name { font-size:15px; font-weight:700; color:#1A1209; }
+.salon-secteur { font-size:12px; color:#6B7280; margin-top:2px; }
+.salon-adresse { font-size:12px; color:#9CA3AF; margin-top:4px; }
+.salon-badge { display:inline-block; background:#E6F4F1; color:var(--teal); padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600; margin-top:6px; }
+.btn-reserver { width:100%; background:var(--teal); color:#fff; border:none; border-radius:10px; padding:10px; font-size:13px; font-weight:700; cursor:pointer; margin-top:10px; font-family:inherit; }
+.btn-reserver:hover { background:#0a5748; }
+
+#map { width:100%; height:100%; }
+
+.empty { text-align:center; padding:60px 20px; color:#9CA3AF; }
+.empty-icon { font-size:48px; margin-bottom:12px; }
+
+@media (max-width:768px) {
+  .container { grid-template-columns:1fr; grid-template-rows:50vh 1fr; }
+  #map { height:100%; }
+  .salons-list { height:50vh; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="logo">Ya<span>Reserva</span> <span class="flag">🇫🇷</span></div>
+    <div class="header-sub">Trouvez votre salon en France</div>
+  </div>
+</div>
+
+<div class="search-bar">
+  <input type="text" class="search-input" placeholder="Rechercher un salon, une ville..." id="search" oninput="filterSalons()">
+  <select class="filter-select" id="filter-ville" onchange="filterSalons()">
+    <option value="">Toutes les villes</option>
+    <option value="Paris">Paris</option>
+    <option value="Lyon">Lyon</option>
+    <option value="Marseille">Marseille</option>
+    <option value="Bordeaux">Bordeaux</option>
+    <option value="Toulouse">Toulouse</option>
+    <option value="Nice">Nice</option>
+    <option value="Nantes">Nantes</option>
+    <option value="Strasbourg">Strasbourg</option>
+    <option value="Lille">Lille</option>
+    <option value="Rennes">Rennes</option>
+  </select>
+  <select class="filter-select" id="filter-secteur" onchange="filterSalons()">
+    <option value="">Tous les services</option>
+    <option value="Coiffure">Coiffure</option>
+    <option value="Spa">Spa</option>
+    <option value="Ongles">Ongles & Nail</option>
+    <option value="Barbier">Barbier</option>
+    <option value="Esthétique">Esthétique</option>
+    <option value="Massage">Massage</option>
+  </select>
+</div>
+
+<div class="container">
+  <div class="salons-list">
+    <div class="salons-count" id="count">Chargement des salons...</div>
+    <div id="salons-container"></div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<script>
+var SU = 'https://axleatjquybypunogkui.supabase.co';
+var SK = 'sb_publishable_9FQEJatmTxpUdRZzWA8xyg_yor0A_EN';
+var allSalons = [];
+var markers = {};
+var map;
+var activeCard = null;
+
+window.onload = function() {
+  // Centrée sur la France
+  map = L.map('map').setView([46.8534, 2.3488], 6);
+  
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+
+  // Géolocalisation
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        var lat = pos.coords.latitude;
+        var lng = pos.coords.longitude;
+        
+        // Vérifier si on est en France
+        if (lat > 41 && lat < 52 && lng > -5 && lng < 10) {
+          map.setView([lat, lng], 13);
+          var userIcon = L.divIcon({
+            html: '<div style="background:#FF6B35;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3)">📍</div>',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            className: ''
+          });
+          L.marker([lat, lng], { icon: userIcon })
+            .addTo(map)
+            .bindPopup('<strong>Vous êtes ici</strong>')
+            .openPopup();
+        }
+      },
+      function() {
+        map.setView([46.8534, 2.3488], 6);
+      }
+    );
+  }
+
+  loadSalons();
+};
+
+async function loadSalons() {
+  try {
+    var client = window.supabase.createClient(SU, SK);
+    var res = await client.from('salons').select('*')
+      .eq('pays', 'FR')
+      .not('latitude', 'is', null);
+    var salons = res.data || [];
+    allSalons = salons;
+    renderSalons(salons);
+    addMarkers(salons);
+  } catch(e) {
+    console.log('Erreur:', e);
+    document.getElementById('count').textContent = 'Erreur de chargement';
+  }
+}
+
+function renderSalons(salons) {
+  var container = document.getElementById('salons-container');
+  document.getElementById('count').innerHTML = '<strong>' + salons.length + ' salon(s)</strong> trouvé(s)';
+  
+  if (salons.length === 0) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><p>Aucun salon dans cette zone pour le moment</p><p style="font-size:12px;margin-top:8px">Bientôt disponible !</p></div>';
+    return;
+  }
+
+  container.innerHTML = salons.map(function(s) {
+    var photo = s.photo_url 
+      ? '<div class="salon-photo"><img src="' + s.photo_url + '" alt="' + s.nom + '"></div>'
+      : '<div class="salon-photo">💅</div>';
+    
+    return '<div class="salon-card" id="card-' + s.id + '" onclick="selectSalon(\'' + s.id + '\',' + s.latitude + ',' + s.longitude + ')">' +
+      '<div class="salon-top">' + photo +
+      '<div class="salon-info">' +
+        '<div class="salon-name">' + s.nom + '</div>' +
+        '<div class="salon-secteur">' + (s.secteur || 'Salon') + '</div>' +
+        (s.adresse ? '<div class="salon-adresse">📍 ' + s.adresse + '</div>' : '') +
+        '<span class="salon-badge">✅ Réservation en ligne</span>' +
+      '</div></div>' +
+      '<button class="btn-reserver" onclick="reserver(event,\'' + s.slug + '\')">Réserver maintenant →</button>' +
+    '</div>';
+  }).join('');
+}
+
+function addMarkers(salons) {
+  Object.values(markers).forEach(function(m) { map.removeLayer(m); });
+  markers = {};
+
+  var icon = L.divIcon({
+    html: '<div style="background:#0D6E5E;color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3)">💅</div>',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    className: ''
+  });
+
+  salons.forEach(function(s) {
+    if (!s.latitude || !s.longitude) return;
+    
+    var marker = L.marker([s.latitude, s.longitude], { icon: icon })
+      .addTo(map)
+      .bindPopup(
+        '<div style="min-width:200px">' +
+        '<div style="font-size:15px;font-weight:800;color:#1A1209;margin-bottom:4px">' + s.nom + '</div>' +
+        '<div style="font-size:12px;color:#6B7280;margin-bottom:8px">' + (s.secteur || 'Salon') + '</div>' +
+        '<a style="display:block;width:100%;background:#0D6E5E;color:#fff;border:none;border-radius:8px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none" href="https://greg-creator380.github.io/YARESERVA/reserva.html?salon=' + s.slug + '" target="_blank">Réserver maintenant →</a>' +
+        '</div>'
+      );
+    
+    markers[s.id] = marker;
+    marker.on('click', function() {
+      selectSalon(s.id, s.latitude, s.longitude);
+    });
+  });
+
+  if (salons.length > 1) {
+    var group = new L.featureGroup(Object.values(markers));
+    map.fitBounds(group.getBounds().pad(0.2));
+  }
+}
+
+function selectSalon(id, lat, lng) {
+  if (activeCard) document.getElementById('card-' + activeCard)?.classList.remove('active');
+  activeCard = id;
+  var card = document.getElementById('card-' + id);
+  if (card) {
+    card.classList.add('active');
+    card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+  map.setView([lat, lng], 15);
+  if (markers[id]) markers[id].openPopup();
+}
+
+function reserver(e, slug) {
+  e.stopPropagation();
+  window.open('https://greg-creator380.github.io/YARESERVA/reserva.html?salon=' + slug, '_blank');
+}
+
+function filterSalons() {
+  var search = document.getElementById('search').value.toLowerCase();
+  var ville = document.getElementById('filter-ville').value;
+  var secteur = document.getElementById('filter-secteur').value;
+
+  var filtered = allSalons.filter(function(s) {
+    var matchSearch = !search || s.nom.toLowerCase().includes(search) || (s.adresse && s.adresse.toLowerCase().includes(search));
+    var matchVille = !ville || (s.ville && s.ville.includes(ville));
+    var matchSecteur = !secteur || (s.secteur && s.secteur.includes(secteur));
+    return matchSearch && matchVille && matchSecteur;
+  });
+
+  renderSalons(filtered);
+  addMarkers(filtered);
+}
+</script>
+</body>
+</html>
