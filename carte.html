@@ -112,6 +112,33 @@ window.onload = function() {
     attribution: '© OpenStreetMap'
   }).addTo(map);
 
+  // Geolocalisation du client
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        var lat = pos.coords.latitude;
+        var lng = pos.coords.longitude;
+        map.setView([lat, lng], 14);
+        
+        // Marqueur position client
+        var userIcon = L.divIcon({
+          html: '<div style="background:#FF6B35;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3)">📍</div>',
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+          className: ''
+        });
+        L.marker([lat, lng], { icon: userIcon })
+          .addTo(map)
+          .bindPopup('<strong>Tu estas aqui</strong>')
+          .openPopup();
+      },
+      function() {
+        // Si refus géoloc → centre sur Cali
+        map.setView([3.4516, -76.5320], 13);
+      }
+    );
+  }
+
   loadSalons();
 };
 
