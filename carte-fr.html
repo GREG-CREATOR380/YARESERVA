@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Réservation salon en ligne France — agenda coiffeur, spa, barbier, vétérinaire. Vos clients réservent 24h/24. Installation gratuite — 49€/mois.">
+<meta name="keywords" content="réservation salon en ligne, agenda coiffeur, planning coiffeur, agenda professionnel beauté, rendez-vous en ligne, application réservation salon, réserver spa en ligne, agenda barbier, planning barbier, agenda vétérinaire, logiciel agenda salon beauté, planning professionnel salon, agenda esthéticienne, réservation esthétique en ligne, agenda spa en ligne, planning rendez-vous automatique, réservation 24h salon, application agenda professionnel, agenda collaborateurs salon, planning employés salon">
 <title>YaReserva — Trouvez votre salon en France</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -256,6 +258,86 @@ function filterSalons() {
 
   renderSalons(filtered);
   addMarkers(filtered);
+}
+</script>
+
+<div style="background:#0D6E5E;padding:40px 20px;text-align:center">
+  <div style="max-width:600px;margin:0 auto">
+    <h2 style="color:#fff;font-size:22px;font-weight:800;margin-bottom:8px">
+      💼 Vous êtes un professionnel ?
+    </h2>
+    <p style="color:rgba(255,255,255,0.8);font-size:15px;margin-bottom:24px">
+      Rejoignez YaReserva et apparaissez sur la carte !<br>
+      Installation gratuite · 49€/mois · Collaborateurs inclus
+    </p>
+    <div style="background:#fff;border-radius:16px;padding:24px;text-align:left">
+      <div style="margin-bottom:14px">
+        <input type="text" id="pro-nom" placeholder="Nom de votre établissement *" 
+          style="width:100%;padding:12px 16px;border:2px solid #eee;border-radius:10px;font-size:14px;outline:none;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:14px">
+        <select id="pro-secteur" style="width:100%;padding:12px 16px;border:2px solid #eee;border-radius:10px;font-size:14px;outline:none;font-family:inherit;background:#fff;box-sizing:border-box">
+          <option value="">Type d'établissement *</option>
+          <option>Coiffure / Salon</option>
+          <option>Spa</option>
+          <option>Barbier</option>
+          <option>Ongles & Nail</option>
+          <option>Esthétique</option>
+          <option>Massage</option>
+          <option>Vétérinaire</option>
+          <option>Autre</option>
+        </select>
+      </div>
+      <div style="margin-bottom:14px">
+        <input type="text" id="pro-ville" placeholder="Ville *"
+          style="width:100%;padding:12px 16px;border:2px solid #eee;border-radius:10px;font-size:14px;outline:none;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:14px">
+        <input type="tel" id="pro-tel" placeholder="Téléphone / WhatsApp *"
+          style="width:100%;padding:12px 16px;border:2px solid #eee;border-radius:10px;font-size:14px;outline:none;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:20px">
+        <input type="email" id="pro-email" placeholder="Email *"
+          style="width:100%;padding:12px 16px;border:2px solid #eee;border-radius:10px;font-size:14px;outline:none;font-family:inherit;box-sizing:border-box">
+      </div>
+      <button onclick="inscriptionPro()" 
+        style="width:100%;background:#0D6E5E;color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+        🚀 Rejoindre YaReserva gratuitement
+      </button>
+      <p style="text-align:center;font-size:12px;color:#9CA3AF;margin-top:12px">
+        Installation gratuite · Sans engagement · Réponse sous 24h
+      </p>
+      <div id="success-pro-fr" style="display:none;background:#E6F4F1;border-radius:12px;padding:20px;text-align:center;margin-top:16px">
+        <div style="font-size:36px;margin-bottom:8px">🎉</div>
+        <div style="font-weight:700;color:#0D6E5E;font-size:16px">Demande reçue !</div>
+        <div style="color:#6B7280;font-size:14px;margin-top:4px">Nous vous contactons dans les 24 heures.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function inscriptionPro() {
+  var nom = document.getElementById('pro-nom').value.trim();
+  var secteur = document.getElementById('pro-secteur').value;
+  var ville = document.getElementById('pro-ville').value.trim();
+  var tel = document.getElementById('pro-tel').value.trim();
+  var email = document.getElementById('pro-email').value.trim();
+  
+  if (!nom || !secteur || !ville || !tel || !email) {
+    alert('Veuillez remplir tous les champs obligatoires.');
+    return;
+  }
+  
+  var msg = '🆕 NOUVEAU PRO YARESERVA FRANCE\n\n'
+    + '🏠 Établissement : ' + nom + '\n'
+    + '💼 Type : ' + secteur + '\n'
+    + '📍 Ville : ' + ville + '\n'
+    + '📱 Téléphone : ' + tel + '\n'
+    + '📧 Email : ' + email;
+  
+  fetch('https://api.callmebot.com/whatsapp.php?phone=33687076677&text=' + encodeURIComponent(msg) + '&apikey=4681566', {mode: 'no-cors'});
+  
+  document.getElementById('success-pro-fr').style.display = 'block';
 }
 </script>
 </body>
