@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YaReserva — Réservez votre rendez-vous</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#F9FAFB; }
+:root { --teal:#0D6E5E; --orange:#FF6B35; }
+.spho { width:100%; height:200px; object-fit:cover; display:none; }
+.shdr { background:var(--teal); color:#fff; padding:20px; text-align:center; }
+.snom { font-size:22px; font-weight:800; }
+.sinf { font-size:13px; opacity:0.8; margin-top:4px; }
+.sbar { display:flex; background:#fff; border-bottom:1px solid #eee; }
+.stab { flex:1; padding:12px 4px; text-align:center; font-size:11px; font-weight:600; color:#9CA3AF; border-bottom:3px solid transparent; }
+.stab.act { color:var(--teal); border-bottom-color:var(--teal); }
+.stab.don { color:var(--teal); }
+.sview { display:none; padding:20px; max-width:560px; margin:0 auto; }
+.sview.act { display:block; }
+.stit { font-size:20px; font-weight:800; margin-bottom:6px; }
+.ssub { font-size:14px; color:#6B7280; margin-bottom:20px; }
+.card { background:#fff; border:2px solid #eee; border-radius:14px; padding:16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; margin-bottom:10px; }
+.card:hover { border-color:var(--teal); }
+.card.on { border-color:var(--teal); background:#E6F4F1; }
+.cn { font-size:15px; font-weight:700; }
+.cm { font-size:13px; color:#6B7280; margin-top:2px; }
+.cc { width:28px; height:28px; border-radius:50%; border:2px solid #ddd; display:flex; align-items:center; justify-content:center; font-size:14px; color:transparent; }
+.card.on .cc { background:var(--teal); border-color:var(--teal); color:#fff; }
+.dgrd { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
+.dc { border:2px solid #eee; border-radius:12px; background:#fff; cursor:pointer; padding:12px 4px; text-align:center; }
+.dc:hover { border-color:var(--teal); }
+.dc.on { background:var(--teal); border-color:var(--teal); color:#fff; }
+.dd { font-size:11px; font-weight:600; opacity:0.7; display:block; }
+.dn { font-size:18px; font-weight:800; display:block; }
+.hgrd { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px; }
+.hc { border:2px solid #eee; border-radius:12px; background:#fff; cursor:pointer; padding:14px 8px; font-size:14px; font-weight:700; text-align:center; border:none; font-family:inherit; width:100%; }
+.hc:hover { border:2px solid var(--teal); }
+.hc.on { background:var(--teal); color:#fff; }
+.hc.fx { background:#F3F4F6; color:#D1D5DB; cursor:not-allowed; }
+.fg { margin-bottom:16px; }
+.fg label { display:block; font-size:14px; font-weight:600; margin-bottom:8px; }
+.fg input { width:100%; padding:14px 16px; border-radius:12px; border:2px solid #ddd; font-size:15px; outline:none; font-family:inherit; }
+.fg input:focus { border-color:var(--teal); }
+.hint { font-size:12px; color:#6B7280; margin-top:4px; }
+.summary { background:#F9FAFB; border-radius:14px; padding:16px; margin-bottom:20px; }
+.sr { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee; font-size:14px; }
+.sr:last-child { border:none; }
+.sl { color:#6B7280; }
+.sv { font-weight:700; }
+.bm { width:100%; background:var(--teal); color:#fff; border:none; border-radius:14px; padding:16px; font-size:16px; font-weight:700; cursor:pointer; margin-bottom:12px; font-family:inherit; }
+.bm:disabled { opacity:0.4; cursor:not-allowed; }
+.bb { width:100%; background:#F3F4F6; color:#6B7280; border:none; border-radius:14px; padding:14px; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit; }
+.ok { display:none; text-align:center; padding:40px 20px; }
+.oki { font-size:64px; margin-bottom:16px; }
+.okt { font-size:24px; font-weight:800; color:var(--teal); margin-bottom:8px; }
+.oks { font-size:15px; color:#6B7280; margin-bottom:24px; }
+.bwa { background:#25D366; color:#fff; border:none; border-radius:14px; padding:16px 24px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit; }
+.rgpd { font-size:11px; color:#9CA3AF; text-align:center; padding:16px; line-height:1.6; }
+.rgpd a { color:var(--teal); }
+footer { text-align:center; padding:20px; color:#9CA3AF; font-size:12px; }
+</style>
+</head>
+<body>
+<img id="P" class="spho">
+<div class="shdr"><div class="snom" id="N">Chargement...</div><div class="sinf" id="I">Réservez votre rendez-vous en ligne</div></div>
+<div class="sbar">
+  <div class="stab act" id="t1">1. Service</div>
+  <div class="stab" id="t2">2. Professionnel</div>
+  <div class="stab" id="t3">3. Date</div>
+  <div class="stab" id="t4">4. Heure</div>
+  <div class="stab" id="t5">5. Coordonnées</div>
+</div>
+
+<!-- ETAPE 1 -->
+<div class="sview act" id="v1">
+  <div class="stit">Quels services souhaitez-vous ?</div>
+  <div class="ssub">Vous pouvez sélectionner plusieurs services</div>
+  <div id="SL"><p style="text-align:center;padding:20px;color:#6B7280">Chargement...</p></div>
+  <div id="svc-summary" style="display:none;background:#E6F4F1;border-radius:12px;padding:14px 16px;margin-bottom:12px;border:2px solid var(--teal)"></div>
+  <button class="bm" id="b1" disabled onclick="go(2)">Continuer →</button>
+</div>
+
+<!-- ETAPE 2 -->
+<div class="sview" id="v2">
+  <div class="stit">Avec qui souhaitez-vous ?</div>
+  <div class="ssub">Choisissez votre professionnel</div>
+  <div id="EL"></div>
+  <button class="bm" id="b2" disabled onclick="go(3)">Continuer →</button>
+  <button class="bb" onclick="go(1)">← Retour</button>
+</div>
+
+<!-- ETAPE 3 -->
+<div class="sview" id="v3">
+  <div class="stit">Quel jour souhaitez-vous ?</div>
+  <div class="ssub">Sélectionnez une date disponible</div>
+  <div class="dgrd" id="DL"></div>
+  <button class="bm" id="b3" disabled onclick="go(4)">Continuer →</button>
+  <button class="bb" onclick="go(2)">← Retour</button>
+</div>
+
+<!-- ETAPE 4 -->
+<div class="sview" id="v4">
+  <div class="stit">À quelle heure ?</div>
+  <div class="ssub">Sélectionnez un créneau disponible</div>
+  <div class="hgrd" id="HL"></div>
+  <button class="bm" id="b4" disabled onclick="go(5)">Continuer →</button>
+  <button class="bb" onclick="go(3)">← Retour</button>
+</div>
+
+<!-- ETAPE 5 -->
+<div class="sview" id="v5">
+  <div class="stit">Vos coordonnées</div>
+  <div class="ssub">Pour confirmer votre rendez-vous</div>
+  <div class="summary">
+    <div class="sr"><span class="sl">Service(s)</span><span class="sv" id="Rs"></span></div>
+    <div class="sr"><span class="sl">Professionnel</span><span class="sv" id="Re"></span></div>
+    <div class="sr"><span class="sl">Date</span><span class="sv" id="Rf"></span></div>
+    <div class="sr"><span class="sl">Heure</span><span class="sv" id="Rh"></span></div>
+    <div class="sr"><span class="sl">Prix total</span><span class="sv" id="Rp" style="color:var(--teal)"></span></div>
+  </div>
+  <div class="fg"><label>Votre nom complet *</label><input type="text" id="in" placeholder="Ex : Marie Dupont" oninput="chk()"></div>
+  <div class="fg"><label>Votre téléphone *</label><input type="tel" id="it" placeholder="06 00 00 00 00" oninput="chk()"></div>
+  <div class="fg"><label>Votre email (optionnel)</label><input type="email" id="ie" placeholder="marie@email.fr"></div>
+  <div class="fg"><label>🎂 Date de naissance (optionnel)</label><input type="date" id="ib"><div class="hint">Pour vous offrir une surprise le jour de votre anniversaire 🎁</div></div>
+  <div class="fg"><label>Notes (optionnel)</label><input type="text" id="io" placeholder="Ex : première visite, allergie à..."></div>
+  <button class="bm" id="b5" disabled onclick="conf()">✅ Confirmer le rendez-vous</button>
+  <button class="bb" onclick="go(4)">← Retour</button>
+  <div class="rgpd">En confirmant, vous acceptez que vos données soient utilisées uniquement pour la gestion de vos rendez-vous. Conformément au RGPD, vous pouvez demander leur suppression à tout moment.</div>
+</div>
+
+<!-- CONFIRMATION -->
+<div class="ok" id="OK">
+  <div class="oki">🎉</div>
+  <div class="okt">Rendez-vous confirmé !</div>
+  <div class="oks" id="OM">Votre rendez-vous a été réservé avec succès.</div>
+  <button class="bwa" onclick="openwa()">💬 Confirmer par WhatsApp</button>
+</div>
+
+<footer>Propulsé par <strong>YaReserva</strong> · yareserva.fr</footer>
+
+<script>
+var SU='https://axleatjquybypunogkui.supabase.co';
+var SK='sb_publishable_9FQEJatmTxpUdRZzWA8xyg_yor0A_EN';
+var SD=null;
+var SS={svcs:[],emp:null,date:null,dlbl:null,hour:null};
+var JOURS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+var MOIS=['jan','fév','mar','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
+
+window.onload=function(){
+  var slug=new URLSearchParams(window.location.search).get('salon')||'demo-fr';
+  window.supabase.createClient(SU,SK).from('salons').select('*').eq('slug',slug).single().then(function(r){
+    if(r.data){SD=r.data;document.getElementById('N').textContent=SD.nom;document.getElementById('I').textContent=(SD.secteur||'Salon')+' · '+(SD.heure_ouverture||'09:00')+' - '+(SD.heure_fermeture||'19:00');if(SD.photo_url){var p=document.getElementById('P');p.src=SD.photo_url;p.style.display='block';}}
+    loadS();
+  }).catch(function(){loadS();});
+};
+
+function go(n){
+  for(var i=1;i<=5;i++){document.getElementById('v'+i).classList.remove('act');var t=document.getElementById('t'+i);t.classList.toggle('act',i===n);t.classList.toggle('don',i<n);}
+  document.getElementById('v'+n).classList.add('act');
+  if(n===2)loadE();if(n===3)loadD();if(n===4)loadH();if(n===5)loadR();
+  window.scrollTo(0,0);
+}
+
+function loadS(){
+  var L=document.getElementById('SL');
+  if(!SD){L.innerHTML='<p style="text-align:center;padding:20px">Salon non trouvé</p>';return;}
+  window.supabase.createClient(SU,SK).from('services').select('*').eq('salon_id',SD.id).eq('actif',true).then(function(r){
+    var svcs=r.data||[];
+    if(!svcs.length){L.innerHTML='<p style="text-align:center;padding:20px">Aucun service configuré</p>';return;}
+    L.innerHTML='';
+    svcs.forEach(function(s){
+      var d=document.createElement('div');d.className='card';
+      var prix=s.prix>0?(s.prix.toLocaleString('fr-FR')+' €'):'Sur devis';
+      d.innerHTML='<div><div class="cn">'+s.nom+'</div><div class="cm">'+s.duree+' min · '+prix+'</div></div><div class="cc">✓</div>';
+      d.addEventListener('click',function(){tgl(s,d);});
+      L.appendChild(d);
+    });
+  });
+}
+
+function tgl(s,el){
+  var idx=-1;for(var i=0;i<SS.svcs.length;i++){if(SS.svcs[i].id===s.id){idx=i;break;}}
+  if(idx>=0){SS.svcs.splice(idx,1);el.classList.remove('on');}else{SS.svcs.push(s);el.classList.add('on');}
+  document.getElementById('b1').disabled=SS.svcs.length===0;
+  // Récapitulatif
+  var total=0;var dur=0;
+  SS.svcs.forEach(function(s){total+=s.prix||0;dur+=s.duree||0;});
+  var sum=document.getElementById('svc-summary');
+  if(SS.svcs.length>0){
+    sum.style.display='block';
+    sum.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center">'
+      +'<span style="font-size:13px;color:#6B7280">'+SS.svcs.length+' service(s) · '+dur+' min</span>'
+      +'<span style="font-size:16px;font-weight:800;color:var(--teal)">'+total.toLocaleString('fr-FR')+' €</span>'
+      +'</div>';
+  } else { sum.style.display='none'; }
+}
+
+function loadE(){
+  var L=document.getElementById('EL');L.innerHTML='';SS.emp=null;document.getElementById('b2').disabled=false;
+  var sin=document.createElement('div');sin.className='card on';
+  sin.innerHTML='<div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:44px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:22px">🎲</div><div><div class="cn">Sans préférence</div><div class="cm">Premier professionnel disponible</div></div></div><div class="cc" style="background:var(--teal);border-color:var(--teal);color:#fff">✓</div>';
+  sin.addEventListener('click',function(){pickE(null,sin);});
+  L.appendChild(sin);
+  if(!SD)return;
+  window.supabase.createClient(SU,SK).from('employes').select('*').eq('salon_id',SD.id).eq('actif',true).then(function(r){
+    (r.data||[]).forEach(function(e){
+      var d=document.createElement('div');d.className='card';
+      var av=e.photo_url?'<img src="'+e.photo_url+'" style="width:44px;height:44px;border-radius:50%;object-fit:cover">':'<div style="width:44px;height:44px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">'+e.nom[0].toUpperCase()+'</div>';
+      d.innerHTML='<div style="display:flex;align-items:center;gap:12px">'+av+'<div><div class="cn">'+e.nom+'</div>'+(e.especialidad?'<div class="cm">'+e.especialidad+'</div>':'')+'</div></div><div class="cc">✓</div>';
+      d.addEventListener('click',function(){pickE(e,d);});
+      L.appendChild(d);
+    });
+  });
+}
+
+function pickE(emp,el){
+  document.querySelectorAll('#EL .card').forEach(function(c){c.classList.remove('on');var ck=c.querySelector('.cc');if(ck){ck.style.background='';ck.style.borderColor='';ck.style.color='transparent';}});
+  el.classList.add('on');var ck=el.querySelector('.cc');if(ck){ck.style.background='var(--teal)';ck.style.borderColor='var(--teal)';ck.style.color='#fff';}
+  SS.emp=emp;document.getElementById('b2').disabled=false;
+}
+
+function loadD(){
+  var L=document.getElementById('DL');L.innerHTML='';
+  var today=new Date();today.setHours(0,0,0,0);
+  var closed=[0];
+  if(SD&&SD.dias_apertura){try{var da=JSON.parse(SD.dias_apertura);var mp={dom:0,lun:1,mar:2,mie:3,jue:4,vie:5,sab:6};closed=[];Object.keys(mp).forEach(function(k){if(!da[k])closed.push(mp[k]);});}catch(e){}}
+  var cnt=0;
+  for(var i=1;i<=60&&cnt<21;i++){
+    var d=new Date(today.getTime());d.setDate(today.getDate()+i);
+    if(closed.indexOf(d.getDay())>=0)continue;cnt++;
+    var ds=d.toISOString().split('T')[0];var lb=d.getDate()+' '+MOIS[d.getMonth()];
+    var el=document.createElement('div');el.className='dc';
+    el.innerHTML='<span class="dd">'+JOURS[d.getDay()]+'</span><span class="dn">'+d.getDate()+'</span>';
+    (function(ds2,lb2,el2){el2.addEventListener('click',function(){pickD(ds2,lb2,el2);});})(ds,lb,el);
+    L.appendChild(el);
+  }
+  if(!L.children.length)L.innerHTML='<p style="text-align:center;padding:20px;color:#E74C3C">Aucune date disponible</p>';
+}
+
+function pickD(ds,lb,el){
+  document.querySelectorAll('.dc').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');SS.date=ds;SS.dlbl=lb;document.getElementById('b3').disabled=false;
+}
+
+function loadH(){
+  var L=document.getElementById('HL');
+  L.innerHTML='<p style="grid-column:span 3;text-align:center;padding:20px;color:#6B7280">Chargement des créneaux...</p>';
+  var sh=9,eh=19,sl=30;
+  if(SD){if(SD.heure_ouverture)sh=parseInt(SD.heure_ouverture)||9;if(SD.heure_fermeture)eh=parseInt(SD.heure_fermeture)||19;if(SD.duracion_slot)sl=parseInt(SD.duracion_slot)||30;}
+  if(sh>=eh){sh=9;eh=19;}if(sl<=0)sl=30;
+  var hrs=[];
+  for(var h=sh;h<eh;h++){for(var m=0;m<60;m+=sl){hrs.push((h<10?'0':'')+h+':'+(m<10?'0':'')+m);}}
+  if(!SD||!SS.date){showH(L,hrs,{},1);return;}
+  window.supabase.createClient(SU,SK).from('reservations').select('heure_rdv').eq('salon_id',SD.id).eq('date_rdv',SS.date).then(function(r){
+    var tk={};(r.data||[]).forEach(function(x){if(x.heure_rdv){var hh=x.heure_rdv.slice(0,5);tk[hh]=(tk[hh]||0)+1;}});
+    showH(L,hrs,tk,SD.capacidad||1);
+  }).catch(function(){showH(L,hrs,{},1);});
+}
+
+function showH(L,hrs,tk,cap){
+  L.innerHTML='';
+  if(!hrs.length){L.innerHTML='<p style="grid-column:span 3;text-align:center;padding:20px;color:#E74C3C">Aucun créneau disponible</p>';return;}
+  hrs.forEach(function(h){
+    var c=tk[h]||0,full=c>=cap,sp=cap-c;
+    var btn=document.createElement('button');
+    btn.className='hc'+(full?' fx':'');
+    btn.disabled=full;
+    btn.innerHTML=h+(full?'<br><small>Complet</small>':(cap>1&&sp<cap?'<br><small>'+sp+' place'+(sp>1?'s':'')+'</small>':''));
+    if(!full){(function(h2,btn2){btn2.addEventListener('click',function(){pickH(h2,btn2);});})(h,btn);}
+    L.appendChild(btn);
+  });
+}
+
+function pickH(h,el){
+  document.querySelectorAll('.hc').forEach(function(b){b.classList.remove('on');});
+  el.classList.add('on');SS.hour=h;document.getElementById('b4').disabled=false;
+}
+
+function loadR(){
+  var tp=0;SS.svcs.forEach(function(s){tp+=s.prix||0;});
+  document.getElementById('Rs').textContent=SS.svcs.map(function(s){return s.nom;}).join(' + ')||'-';
+  document.getElementById('Re').textContent=SS.emp?SS.emp.nom:'Sans préférence';
+  document.getElementById('Rf').textContent=SS.dlbl||'-';
+  document.getElementById('Rh').textContent=SS.hour||'-';
+  document.getElementById('Rp').textContent=tp>0?tp.toLocaleString('fr-FR')+' €':'Sur devis';
+}
+
+function chk(){
+  var n=document.getElementById('in').value.trim();var t=document.getElementById('it').value.trim();
+  document.getElementById('b5').disabled=n.length<2||t.replace(/\D/g,'').length<7;
+}
+
+function conf(){
+  var nom=document.getElementById('in').value.trim();var tel=document.getElementById('it').value.trim();
+  var email=document.getElementById('ie').value.trim();
+  var bdy=document.getElementById('ib').value||null;var not=document.getElementById('io').value.trim();
+  if(!nom||!tel)return;
+  if(SD){
+    var cl=window.supabase.createClient(SU,SK);
+    var sn=SS.svcs.map(function(s){return s.nom;}).join(' + ');
+    cl.from('reservations').insert([{salon_id:SD.id,client_nom:nom,client_telephone:tel,service:sn,date_rdv:SS.date,heure_rdv:SS.hour,notes:not,statut:'confirmée',employe_nom:SS.emp?SS.emp.nom:null}]).then(function(){
+      cl.from('clients').select('id').eq('salon_id',SD.id).eq('telephone',tel).single().then(function(r){
+        if(r.data){if(bdy)cl.from('clients').update({date_naissance:bdy}).eq('id',r.data.id);}
+        else{cl.from('clients').insert([{salon_id:SD.id,nom:nom,telephone:tel,date_naissance:bdy}]);}
+      });
+      var msg='Nouveau rendez-vous chez '+SD.nom+' !\n'+nom+'\n'+sn+'\n'+SS.dlbl+' - '+SS.hour+'\n'+tel;
+      var ph=(SD.whatsapp||'').replace(/\D/g,'');
+      if(ph)fetch('https://api.callmebot.com/whatsapp.php?phone='+ph+'&text='+encodeURIComponent(msg)+'&apikey=4681566',{mode:'no-cors'});
+    });
+  }
+  document.querySelectorAll('.sview').forEach(function(v){v.classList.remove('act');});
+  document.getElementById('OK').style.display='block';
+  var sn=SS.svcs.map(function(s){return s.nom;}).join(' + ');
+  document.getElementById('OM').textContent=sn+' · '+SS.dlbl+' · '+SS.hour;
+  window.scrollTo(0,0);
+}
+
+function openwa(){
+  var sn=SS.svcs.map(function(s){return s.nom;}).join(' + ');
+  var msg='Bonjour ! Je viens de réserver chez '+(SD?SD.nom:'le salon')+'. '+sn+' · '+SS.dlbl+' · '+SS.hour;
+  var ph=SD?(SD.whatsapp||'').replace(/\D/g,''):'';
+  if(ph&&!ph.startsWith('33'))ph='33'+ph;
+  window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(msg),'_blank');
+}
+</script>
+</body>
+</html>
