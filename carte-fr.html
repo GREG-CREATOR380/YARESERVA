@@ -185,6 +185,7 @@ function renderSalons(salons) {
         '<div class="salon-secteur">' + (s.secteur || 'Salon') + '</div>' +
         (s.adresse ? '<div class="salon-adresse">📍 ' + s.adresse + '</div>' : '') +
         '<span class="salon-badge">✅ Réservation en ligne</span>' +
+        '' +
       '</div></div>' +
       '<button class="btn-reserver" onclick="reserver(event,\'' + s.slug + '\')">Réserver maintenant →</button>' +
     '</div>';
@@ -268,7 +269,7 @@ function filterSalons() {
     </h2>
     <p style="color:rgba(255,255,255,0.8);font-size:15px;margin-bottom:24px">
       Rejoignez YaReserva et apparaissez sur la carte !<br>
-      Installation gratuite · 49€/mois · Collaborateurs inclus
+    Installation gratuite · Collaborateurs inclus
     </p>
     <div style="background:#fff;border-radius:16px;padding:24px;text-align:left">
       <div style="margin-bottom:14px">
