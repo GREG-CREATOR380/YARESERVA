@@ -150,8 +150,8 @@ var MOIS=['jan','fév','mar','avr','mai','juin','juil','aoû','sep','oct','nov',
 
 window.onload=function(){
   var slug=new URLSearchParams(window.location.search).get('salon')||'demo-fr';
-  window.supabase.createClient(SU,SK).from('salons').select('*').eq('slug',slug).single().then(function(r){
-    if(r.data){SD=r.data;document.getElementById('N').textContent=SD.nom;document.getElementById('I').textContent=(SD.secteur||'Salon')+' · '+(SD.heure_ouverture||'09:00')+' - '+(SD.heure_fermeture||'19:00');if(SD.photo_url){var p=document.getElementById('P');p.src=SD.photo_url;p.style.display='block';}}
+  window.supabase.createClient(SU,SK).from('salons').select('*').eq('slug',slug).limit(1).then(function(r){
+    if(r.data&&r.data.length>0){var data=r.data[0];SD=data;document.getElementById('N').textContent=SD.nom;document.getElementById('I').textContent=(SD.secteur||'Salon')+' · '+(SD.heure_ouverture||'09:00')+' - '+(SD.heure_fermeture||'19:00');if(SD.photo_url){var p=document.getElementById('P');p.src=SD.photo_url;p.style.display='block';}}
     loadS();
   }).catch(function(){loadS();});
 };
