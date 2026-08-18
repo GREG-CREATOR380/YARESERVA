@@ -67,11 +67,6 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; backg
     <div class="logo">Ya<span>Reserva</span></div>
     <div class="header-sub">Encuentra tu salon en Colombia</div>
   </div>
-  <a href="https://wa.me/573146308300?text=Hola!%20Vi%20YaReserva%20en%20el%20mapa%20y%20me%20interesa%20para%20mi%20negocio!" 
-     target="_blank"
-     style="background:#25D366;color:#fff;border:none;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:8px;white-space:nowrap">
-    💬 Unirse a YaReserva
-  </a>
 </div>
 
 <div class="search-bar">
@@ -209,7 +204,7 @@ function addMarkers(salons) {
         '<div class="popup-content">' +
         '<div class="popup-name">' + s.nom + '</div>' +
         '<div class="popup-secteur">' + (s.secteur || 'Salon') + '</div>' +
-        '<a class="popup-btn" href="https://greg-creator380.github.io/YARESERVA/reserva.html?salon=' + s.slug + '" target="_blank">Reservar ahora →</a>' +
+        '<a class="popup-btn" href="https://greg-creator380.github.io/YARESERVA/reserva.html?salon=' + s.slug + '">Reservar ahora →</a>' +
         '</div>'
       );
     
@@ -244,7 +239,7 @@ function selectSalon(id, lat, lng) {
 
 function reservar(e, slug) {
   e.stopPropagation();
-  window.open('https://greg-creator380.github.io/YARESERVA/reserva.html?salon=' + slug, '_blank');
+  window.location.href = 'https://greg-creator380.github.io/YARESERVA/reserva.html?salon=' + slug;
 }
 
 function filterSalons() {
